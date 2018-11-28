@@ -1,0 +1,18 @@
+.track-name {
+  color: black;
+  font-size: 20px;
+  opacity: 1;
+}
+
+.track-details {
+  color: black;
+  font-size: 14px;
+  opacity: 1;
+  cursor: default;
+}
+
+.track-item {
+  margin: 10px;
+  cursor: default;
+  /* background-color: white; */
+}

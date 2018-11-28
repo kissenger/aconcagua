@@ -1,0 +1,32 @@
+
+.outer-box {
+  min-height: 100vh;
+  overflow: hidden;
+  display: block;
+  position: relative;
+  padding-bottom: 0px;
+  width: 960px;
+  border: 0px purple dashed;
+}
+
+.header {
+  border: 0px red dashed;
+ }
+
+.content-box {
+    /* margin: 0px 0px 0px 15px; */
+    font-size: 20px;
+    color: white;
+    opacity: 1.0;
+    /* margin: auto; */
+    /* width: 100%; */
+    border: 0px greenyellow dotted;
+}
+
+.footer {
+    position: absolute;
+    bottom: 20px;
+    border: 0px orangered dashed;
+    width: 100%;
+    /* margin: 0px 300px 0px 0px; */
+   }

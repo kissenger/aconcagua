@@ -1,0 +1,8 @@
+<div *ngFor="let line of dataForHTML">
+  <div (click)="onLineClick(line._id)" class="track-item">
+    <div class="route-name">{{line.name}}</div>
+    <div class="route-details">
+      {{line.properties.startTime}}
+      {{line.properties.pathStats.totalDistance/1000 | number: '1.1-2'}} km</div>
+  </div>
+</div>

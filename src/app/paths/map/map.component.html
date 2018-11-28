@@ -1,0 +1,29 @@
+<div id="map"> </div>
+
+<div class="form-popup" id="myForm">
+  <form class="form-container">
+
+    <p>Save Track</p>
+
+    <label>Track Name</label>
+    <input
+      id='name'
+      name='name'
+      placeholder={{pathName}}
+      ngModel>
+
+      <br>
+      <label>Description</label>
+      <textarea
+        id='description'
+        name='description'
+        placeholder={{description}}
+        cols='40'
+        rows='5'
+        ngModel> </textarea>
+
+    <button type="button" (click)="onSave()"> Save </button>
+    <button type="button" (click)="onCancel()"> Cancel </button>
+
+  </form>
+</div>

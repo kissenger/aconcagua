@@ -1,0 +1,6 @@
+<div *ngFor="let line of data">
+  <div (click)="onLineClick(line._id)" class="track-item">
+    <div class="track-name">{{line.name}}</div>
+    <div class="track-details">{{line.properties.pathStats.totalDistance/1000 | number: '1.1-2'}} km</div>
+  </div>
+</div>

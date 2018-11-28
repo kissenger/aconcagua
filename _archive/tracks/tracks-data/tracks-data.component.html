@@ -1,0 +1,57 @@
+<p [ngStyle]="{'color': [pathColor] }">
+Path color: {{pathColor}}
+</p>
+Path name: {{pathName}}
+<br>
+Distance: {{totalDistance/1000 | number: '1.1-1'}}km
+<br>
+Ascent: {{totalAscent | number: '1.0-0'}}m
+<br>
+Descent: {{totalDescent | number: '1.0-0'}}m
+<br>
+Longest Climb: {{longestClimb | number: '1.0-0'}}m
+<br>
+Longest Climb Gradient: {{longestClimbGradient | number: '1.1-1'}}%
+<br>
+Longest Descent: {{longestDescent | number: '1.0-0'}}m
+<br>
+Longest Climb Gradient: {{longestDescentGradient | number: '1.1-1'}}%
+<br>
+Maximum Gradient: {{maxGradient | number: '1.1-1'}}%
+<br>
+Minimum Gradient: {{minGradient | number: '1.1-1'}}%
+<br>
+Max point2point distance: {{maxDistBtwnTwoPoints | number: '1.1-1'}}m
+<br>
+Ave point2point distance: {{aveDistBtwnTwoPoints | number: '1.1-1'}}m
+<br>
+
+<div class="form-popup" id="myForm">
+  <form
+    class="form-container"
+    (submit)="onSave()"
+    (cancel)="onCancel()">
+
+    <p>Save Track</p>
+
+    <label>Track Name</label>
+    <input
+      type="Track name"
+      [placeholder]="pathName"
+      name="track-name"
+      ngModel>
+
+      <label>Description</label>
+      <input
+      type="Description"
+      placeholder="Enter details"
+      name="description"
+      ngModel>
+
+    <button
+      type="submit">Save</button>
+    <button
+      type="cancel">Cancel</button>
+  </form>
+</div>
+

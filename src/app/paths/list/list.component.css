@@ -1,0 +1,18 @@
+.route-name {
+  color: black;
+  font-size: 20px;
+  opacity: 1;
+}
+
+.route-details {
+  color: black;
+  font-size: 14px;
+  opacity: 1;
+  cursor: default;
+}
+
+.route-item {
+  margin: 10px;
+  cursor: default;
+  /* background-color: white; */
+}

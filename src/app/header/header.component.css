@@ -1,0 +1,31 @@
+div {
+    border: 0px solid red;
+
+}
+
+.upper-gap {
+    margin: 5px 0px 0px 0px;
+}
+
+.navbar{
+    background-color: transparent;
+    border: 0px
+}
+
+.navbar-brand{
+    color: white;
+    font-size: 30px;
+    opacity: 1;
+}
+
+hr.hr-navbar {
+    margin: 5px 15px 0px 0px;
+    opacity: 1;
+}
+
+.navbar-nav > li > a {
+    color: white;
+    font-size: 20px;
+    opacity: 1;
+    /* border: 1px white solid; */
+}
