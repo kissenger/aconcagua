@@ -19,21 +19,29 @@ import { PromiseType } from 'protractor/built/plugins';
 export class MapComponent implements OnInit, OnDestroy {
 
   public myService: any;
+  public paramSubs: any;
+
   public httpClient: any;
   public pathType: String;
   public pathID: String;
   public path: any;
-  public paramSubs: any;
+
   public map: google.maps.Map;
   public pathName: String;
   public description: String;
   public routeDataId;
+
   public binary;
   public tracks;
+  public contour;
+  public match;
+
+
+
   public isReviewPage: Boolean;
   public isMatchPage: Boolean;
-  public contour;
   public subsActive: Boolean;
+
   public btnLooks = {
     'bgEnabled': '#e0e0e0',
     'bgDisabled': '#c0c0c0',
@@ -41,7 +49,14 @@ export class MapComponent implements OnInit, OnDestroy {
     'txtEnabled': '#000000',
     'txtDisabled': '#808080'
   };
+  public lineStyle = {
+    'binary':  { 'clickable': true, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 1.0 },
+    'contour': { 'clickable': true, 'strokeColor': null, 'strokeWeight': 5, 'strokeOpacity': 1.0 },
+    'route':   { 'clickable': true, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 1.0 },
+    'tracks':  { 'clickable': true, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 0.4 }
+  };
   public timer;
+  public that = this;
 
   constructor(
     private http: HttpClient,
@@ -49,7 +64,9 @@ export class MapComponent implements OnInit, OnDestroy {
     private mapService: MapService,
     private router: Router,
     private activatedRouter: ActivatedRoute
-    ) {}
+    ) {
+      this.router = router;
+    }
 
   ngOnInit() {
 
@@ -64,7 +81,6 @@ export class MapComponent implements OnInit, OnDestroy {
       this.isReviewPage = params.id === '-1' ? true : false;
       // this.isMatchPage = params.match === 'match' ? true : false;
 
-
       // if path id is specified in the url, then request path data from backend
       document.documentElement.style.cursor = 'wait';
 
@@ -75,6 +91,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
           let httpString;
           httpString = 'http://localhost:3000/get-path-by-id/' + this.pathType + '/' + this.pathID + '/false';
+          console.log('get-path-by-id');
 
           this.http
               .get(httpString)
@@ -91,21 +108,7 @@ export class MapComponent implements OnInit, OnDestroy {
               this.http
                 .get('http://localhost:3000/match-from-db/' + this.pathID)
                 .subscribe( (dataIn) => {
-                  this.binary = dataIn['geoBinary'];
-                  this.contour = dataIn['geoContour'];
-                  this.tracks = dataIn['geoTracks'];
-                  console.log(this.binary);
-                  console.log(this.tracks);
-                  console.log(this.contour);
-
-                  // timer calls setInputEnabled at intervals until elemntns are defined - in case
-                  // this is happening too quick for the DOM
-                  this.timer = setInterval( () => {
-                    this.setInputEnabled(<HTMLElement>document.getElementById('Tracks'));
-                    this.setInputEnabled(<HTMLElement>document.getElementById('Binary'));
-                    this.setInputEnabled(<HTMLElement>document.getElementById('Contour'));
-                  }, 200);
-
+                  this.processMatchData(dataIn);
                 });
             }
           }
@@ -130,38 +133,52 @@ export class MapComponent implements OnInit, OnDestroy {
 
   } // ngOnInit
 
-  setInputEnabled(div) {
-
-    if ( !div ) { return false; }
-
-    const cb = <HTMLInputElement>document.getElementById('input' + div.id);
-    cb.disabled = false;
-    div.style.backgroundColor =  '#e0e0e0';
-    div.style.color = 'black';
-    clearInterval(this.timer);
-
-  }
-
-  setInputDisabled(div) {
-
-    if ( !div ) { return false; }
-
-    const cb = <HTMLInputElement>document.getElementById('input' + div.id);
-    cb.disabled = false;
-    div.style.backgroundColor =  '#e0e0e0';
-    div.style.color = 'black';
-    clearInterval(this.timer);
-
-  }
-
   loadMap() {
 
     console.log(this.path);
 
     // launch map
-    const that = this;
+
     const mapService = this.mapService;
     this.map = new google.maps.Map(document.getElementById('map'), {
+      styles: [
+        {'elementType': 'geometry', 'stylers': [{ 'color': '#ebe3cd' } ]},
+        {'elementType': 'labels.text.fill', 'stylers': [{ 'color': '#523735' }]},
+        {'elementType': 'labels.text.stroke', 'stylers': [{ 'color': '#f5f1e6'}]},
+        {'featureType': 'administrative', 'elementType': 'geometry.stroke', 'stylers': [{ 'color': '#c9b2a6'}]},
+        {'featureType': 'administrative.land_parcel', 'stylers': [{ 'visibility': 'off'}]},
+        {'featureType': 'administrative.land_parcel', 'elementType': 'geometry.stroke', 'stylers': [{ 'color': '#dcd2be'}]},
+        {'featureType': 'administrative.land_parcel', 'elementType': 'labels.text.fill', 'stylers': [{ 'color': '#ae9e90'}]},
+        {'featureType': 'administrative.neighborhood', 'stylers': [{ 'visibility': 'off'}]},
+        {'featureType': 'landscape.natural', 'elementType': 'geometry', 'stylers': [{'color': '#dfd2ae'}]},
+        {'featureType': 'poi', 'elementType': 'geometry', 'stylers': [{'color': '#dfd2ae'}]},
+        {'featureType': 'poi', 'elementType': 'labels.text', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'poi', 'elementType': 'labels.text.fill', 'stylers': [{'color': '#93817c'}]},
+        {'featureType': 'poi.business', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'poi.park', 'elementType': 'geometry.fill', 'stylers': [{'color': '#a5b076'}]},
+        {'featureType': 'poi.park', 'elementType': 'labels.text.fill', 'stylers': [{'color': '#447530'}]},
+        {'featureType': 'road', 'elementType': 'geometry', 'stylers': [{'color': '#f5f1e6'}]},
+        {'featureType': 'road', 'elementType': 'labels', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'road', 'elementType': 'labels.icon', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'road.arterial', 'elementType': 'geometry', 'stylers': [{'color': '#fdfcf8'}]},
+        {'featureType': 'road.arterial', 'elementType': 'geometry.fill', 'stylers': [{'color': '#efebdc'}]},
+        {'featureType': 'road.arterial', 'elementType': 'labels', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'road.highway', 'elementType': 'geometry', 'stylers': [{'color': '#f8c967'}]},
+        {'featureType': 'road.highway', 'elementType': 'geometry.stroke', 'stylers': [{'color': '#e9bc62'}]},
+        {'featureType': 'road.highway', 'elementType': 'labels', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'road.highway.controlled_access', 'elementType': 'geometry', 'stylers': [{'color': '#e98d58'}]},
+        {'featureType': 'road.highway.controlled_access', 'elementType': 'geometry.stroke', 'stylers': [{'color': '#db8555'}]},
+        {'featureType': 'road.local', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'road.local', 'elementType': 'labels.text.fill', 'stylers': [{'color': '#806b63'}]},
+        {'featureType': 'transit', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'transit.line', 'elementType': 'geometry', 'stylers': [{'color': '#dfd2ae'}]},
+        {'featureType': 'transit.line', 'elementType': 'labels.text.fill', 'stylers': [{'color': '#8f7d77'}]},
+        {'featureType': 'transit.line', 'elementType': 'labels.text.stroke', 'stylers': [{'color': '#ebe3cd'}]},
+        {'featureType': 'transit.station', 'elementType': 'geometry', 'stylers': [{'color': '#dfd2ae'}]},
+        {'featureType': 'water', 'elementType': 'geometry.fill', 'stylers': [{'color': '#b9d3c2'}]},
+        {'featureType': 'water', 'elementType': 'labels.text', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'water', 'elementType': 'labels.text.fill', 'stylers': [{'color': '#92998d'}]}
+      ],
       mapTypeId: google.maps.MapTypeId.TERRAIN,
       fullscreenControl: false,
       streetViewControl: false,
@@ -169,114 +186,108 @@ export class MapComponent implements OnInit, OnDestroy {
       mapTypeControlOptions: {
         mapTypeIds: ['terrain']
       }
+
     });
 
-    if ( typeof this.path.features[0] !== 'undefined' ) {
-      that.path.features[0]['id'] = 'route';
-      that.map.data.addGeoJson(that.path.features[0]);
+    // determine if data is available and act accordingly
+    if ( this.pathID !== '0' ) {
+
+      const that = this;
+      // plot route data
+      this.path.features[0]['id'] = 'route-';
+      this.map.data.addGeoJson(this.that.path.features[0]);
+
+      // fit map bounds
+      this.map.fitBounds({
+        north: this.path.bbox[3],
+        south: this.path.bbox[1],
+        east:  this.path.bbox[2],
+        west:  this.path.bbox[0]
+      });
+
+      // set all paths to unclicked
+      this.path.features.map(x => x.properties.isClicked = false);
+
+      // set style of plotted paths
+      this.map.data.setStyle( (feature) => {
+
+        const featureId = String(feature.getId());
+        const featureType = featureId.substring(0, featureId.indexOf('-'));
+        that.lineStyle[featureType]['strokeColor'] = feature.getProperty('color');
+        return that.lineStyle[featureType];
+
+      });
+
+
+    } else {
+
+      // default fit map bounds
+      this.map.fitBounds({
+        north: 90,
+        south: -90,
+        east:  180,
+        west:  -180
+      });
+
+    }
+
+    // define controls
+    this.pushControls();
+
+    // emit data to data component
+    if ( this.pathID !== '0' ) {
+      mapService.newMapData.emit(
+        this.getDataPackage(this.path.features[0])
+      );
     }
 
 
-    this.map.data.setStyle(function(feature) {
-      let props = {};
-      const featureId = String(feature.getId());
-      if ( featureId.indexOf('binary') !== -1) {
-        props = {
-          clickable: true,
-          strokeColor: feature.getProperty('color'),
-          strokeWeight: 3,
-          strokeOpacity: 1.0
-        };
-      } else
-      if ( featureId.indexOf('contour') !== -1) {
-        props = {
-          clickable: true,
-          strokeColor: feature.getProperty('color'),
-          strokeWeight: 5,
-          strokeOpacity: 1.0
-        };
-      } else
-      if ( featureId.indexOf('tracks') !== -1 ) {
-        props = {
-          clickable: true,
-          strokeColor: feature.getProperty('color'),
-          strokeWeight: 3,
-          strokeOpacity: 0.4
-        };
-      } else
-      if ( featureId.indexOf('route') !== -1 ) {
-        props = {
-          clickable: true,
-          strokeColor: feature.getProperty('color'),
-          strokeWeight: 3,
-          strokeOpacity: 1.0
-        };
-      }
+  } // loadMap()
 
-      return props;
-    });
+/**
+ * DEFINE MAP CONTROLS
+ */
 
-
-    this.map.fitBounds({
-      north: this.path.bbox[3],
-      south: this.path.bbox[1],
-      east:  this.path.bbox[2],
-      west:  this.path.bbox[0]
-    });
-    // Set all paths to unclicked
-    this.path.features.map(x => x.properties.isClicked = false);
-
-
-
-
-
-  /**
-   *
-   * Define embedded map controls
-   *
-   */
-
-
+  pushControls() {
     const btnDelete   = { type: 'button',
                           text: 'Delete',
                           rollOver: 'Delete selected track',
-                          clickFunction: pathDelete,
+                          clickFunction: this.pathDelete.bind(this),
                           isEnabled: true};
     const btnLoad     = { type: 'button',
                           text: 'Import',
                           rollOver: 'Add more tracks',
-                          clickFunction: pathLoad,
+                          clickFunction: this.pathLoad.bind(this),
                           isEnabled: true};
     const btnCreate   = { type: 'button',
                           text: 'Create',
                           rollOver: 'Create a new route',
-                          clickFunction: createNew,
+                          clickFunction: this.createNew.bind(this),
                           isEnabled: false};
     const btnZoom     = { type: 'button',
                           text: 'Zoom In',
                           rollOver: 'Zoom in on selected track',
-                          clickFunction: zoomIn,
+                          clickFunction: this.zoomIn.bind(this),
                           isEnabled: false};
     const btnFit      = { type: 'button',
                           text: 'Fit All',
                           rollOver: 'Fit all tracks on screen',
-                          clickFunction: fitAll,
+                          clickFunction: this.fitAll.bind(this),
                           isEnabled: false};
-
     const btnBatch    = { type: 'button',
                           text: 'Batch',
                           rollOver: 'Load a batch of tracks',
-                          clickFunction: batchLoad,
+                          clickFunction: this.batchLoad.bind(this),
                           isEnabled: true};
     const btnSave     = { type: 'button',
                           text: 'Save',
                           rollOver: 'Save selected track',
-                          clickFunction: pathSave,
+                          clickFunction: this.pathSave.bind(this),
                           isEnabled: true};
     const btnDiscard  = { type: 'button',
                           text: 'Discard',
                           rollOver: 'Discard selected track',
-                          clickFunction: pathDiscard,
+                          clickFunction: this.pathDiscard.bind(this),
                           isEnabled: true};
     const radioBtns   = { type: 'radio',
                           btns:
@@ -293,12 +304,12 @@ export class MapComponent implements OnInit, OnDestroy {
                                 isChecked: false,
                                 isEnabled: false }
                             ],
-                          clickFunction: radioClick
+                          clickFunction: this.radioClick.bind(this)
                         };
     const cbTracks    = { type: 'check',
                           text: 'Tracks',
                           rollOver: 'Show tracks plot',
-                          clickFunction: cbShowTracks,
+                          clickFunction: this.cbShowTracks.bind(this),
                           isEnabled: false,
                           isChecked: false};
 
@@ -324,205 +335,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
     this.createControls(ctrlsTopLeft, 'LEFT_TOP');
     this.createControls(ctrlsMiddleLeft, 'LEFT_CENTER');
-
-  /**
-   *
-   * Emit information to data component
-   *
-   */
-
-    if ( this.pathID !== '0' ) {
-      mapService.newMapData.emit(this.getDataPackage(this.path.features[0]));
-    }
-
-
-    function cbShowTracks () {
-      const cb = <HTMLInputElement>document.getElementById('inputTracks');
-
-      if ( cb.checked === true ) {
-        that.tracks.features.forEach( (ftr, i) => {
-          ftr.id = 'tracks' + i;
-          that.map.data.addGeoJson(ftr);
-        });
-      } else {
-        that.tracks.features.forEach( (ftr, i) => {
-          that.map.data.remove(that.map.data.getFeatureById('tracks' + i));
-        });
-      }
-    }
-
-    function radioClick() {
-
-      const r = <HTMLInputElement>document.getElementById('inputRoute');
-      const b = <HTMLInputElement>document.getElementById('inputBinary');
-      const c = <HTMLInputElement>document.getElementById('inputContour');
-
-      if ( r.checked ) {
-        // remove data
-        try {
-          that.binary.features.forEach( (ftr, i) => {
-            that.map.data.remove(that.map.data.getFeatureById('binary' + i));
-          });
-        } catch {}
-        try {
-          that.contour.features.forEach( (ftr, i) => {
-            that.map.data.remove(that.map.data.getFeatureById('contour' + i));
-          });
-        } catch {}
-        // add route
-        that.path.features[0]['id'] = 'route';
-        that.map.data.addGeoJson(that.path.features[0]);
-      } else
-
-      if ( b.checked ) {
-        // remove data
-        try {
-          that.map.data.remove(that.map.data.getFeatureById('route'));
-        } catch {}
-        try {
-          that.contour.features.forEach( (ftr, i) => {
-            that.map.data.remove(that.map.data.getFeatureById('contour' + i));
-          });
-        } catch {}
-        // add binary
-        that.binary.features.forEach( (ftr, i) => {
-          ftr.id = 'binary' + i;
-          that.map.data.addGeoJson(ftr);
-        });
-      } else
-
-      if ( c.checked ) {
-        // remove data
-        try {
-          that.map.data.remove(that.map.data.getFeatureById('route'));
-        } catch {}
-        try {
-          that.binary.features.forEach( (ftr, i) => {
-            that.map.data.remove(that.map.data.getFeatureById('binary' + i));
-          });
-        } catch {}
-        // add contour
-        that.contour.features.forEach( (ftr, i) => {
-          ftr.id = 'contour' + i;
-          that.map.data.addGeoJson(ftr);
-        });
-      }
-    }
-
-    // function cbShowRoute() {
-    //   const cb = <HTMLInputElement>document.getElementById('cbRoute');
-
-    //   if ( cb.checked === true ) {
-    //     that.path.features[0]['id'] = 'route';
-    //     that.map.data.addGeoJson(that.path.features[0]);
-    //   } else {
-    //     that.map.data.remove(that.map.data.getFeatureById('route'));
-    //   }
-    // }
-
-    // function cbShowBinary() {
-    //   const cb = <HTMLInputElement>document.getElementById('cbBinary');
-
-    //   if ( cb.checked === true ) {
-    //     that.binary.features.forEach( (ftr, i) => {
-    //       ftr.id = 'binary' + i;
-    //       that.map.data.addGeoJson(ftr);
-    //     });
-    //   } else {
-    //     that.binary.features.forEach( (ftr, i) => {
-    //       that.map.data.remove(that.map.data.getFeatureById('binary' + i));
-    //     });
-    //   }
-    // }
-
-    // function cbShowContour() {
-    //   const cb = <HTMLInputElement>document.getElementById('cbContour');
-
-    //   if ( cb.checked === true ) {
-    //     that.contour.features.forEach( (ftr, i) => {
-    //       ftr.id = 'contour' + i;
-    //       that.map.data.addGeoJson(ftr);
-    //     });
-    //   } else {
-    //     that.contour.features.forEach( (ftr, i) => {
-    //       that.map.data.remove(that.map.data.getFeatureById('contour' + i));
-    //     });
-    //   }
-    // }
-
-  /**
-   *
-   * Button functions
-   *
-   */
-
-    function pathLoad() {
-      console.log('click load');
-      that.router.navigate(['load-paths', that.pathType, 'single']);
-    }
-
-    function batchLoad () {
-      console.log('click batch load');
-      that.router.navigate(['load-paths', that.pathType, 'batch']);
-    }
-
-    function pathDelete() {
-      console.log('click delete');
-      that.http.get('http://localhost:3000/delete-path/' + that.pathType + '/' + that.pathID)
-        .subscribe( () => {
-          // that.updateListService.hasListChanged.emit(true);
-          that.router.navigate(['paths', that.pathType]);
-        });
-    }
-
-    function zoomIn() {
-      console.log('click zoom');
-       // needs reviewing:
-      // for (const path of this.pathAsGeoJson.features) {
-      //   if (path.properties.isClicked) {
-      //     this.map.fitBounds({
-      //         north: path.bbox[3],
-      //         south: path.bbox[1],
-      //         east:  path.bbox[2],
-      //         west:  path.bbox[0]
-      //     });
-      //   }
-      // }
-    }
-
-    function fitAll() {
-      console.log('click fit');
-      // needs reviewing:
-      // this.map.fitBounds({
-      //   north: this.pathAsGeoJson.bbox[3],
-      //   south: this.pathAsGeoJson.bbox[1],
-      //   east:  this.pathAsGeoJson.bbox[2],
-      //   west:  this.pathAsGeoJson.bbox[0]
-      // });
-    }
-
-    function createNew () {
-      console.log('create new');
-      that.router.navigate(['create-route']);
-    }
-
-    // function matchTracks () {
-    //   console.log('match tracks');
-    //   console.log(that.pathType);
-    //   console.log(that.pathID);
-    //   that.router.navigate(['paths', that.pathType,  that.pathID, 'match']);
-    // }
-
-    function pathSave() {
-      console.log('click save');
-      that.openForm();
-    }
-
-    function pathDiscard() {
-      console.log('click discard');
-      that.router.navigate(['paths', that.pathType]);
-    }
-  } // loadMap()
+  }
 
   createControls(ctrls, position) {
 
@@ -545,6 +358,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
         // attach button listeners
         if ( thisCtrl.isEnabled ) {
+          console.log(that);
           innerDiv.addEventListener('click', thisCtrl.clickFunction);
           innerDiv.addEventListener('mouseover', () => { innerDiv.style.backgroundColor = that.btnLooks.bgHover; });
           innerDiv.addEventListener('mouseout', () => { innerDiv.style.backgroundColor = that.btnLooks.bgEnabled; });
@@ -610,72 +424,9 @@ export class MapComponent implements OnInit, OnDestroy {
 
     this.map.controls[google.maps.ControlPosition[position]].push(masterDiv);
 
-    // const controlDiv = document.createElement('div');
-    // const checkBoxDiv = document.createElement('div');
-
-    // r.forEach( (thisBtn) => {
-
-    //   // create div elements
-    //   const outerDiv = document.createElement('div');
-    //   const innerDiv = document.createElement('div');
-    //   const inputDiv = document.createElement('input');
-
-    //   // apply formatting
-    //   this.outerDivFormat(outerDiv, thisBtn);
-    //   this.innerDivFormat(innerDiv, thisBtn);
-
-    //   // join
-    //   controlDiv.appendChild(outerDiv);
-    //   outerDiv.appendChild(innerDiv);
-
-    //   // Attach listeners
-    //   innerDiv.addEventListener('click', thisBtn.clickFunction);
-    //   innerDiv.addEventListener('mouseover', function() {
-    //     if ( thisBtn.isEnabled ) {
-    //       innerDiv.style.backgroundColor = that.btnLooks.bgHover;
-    //     }
-    //   });
-    //   innerDiv.addEventListener('mouseout', function() {
-    //     if ( thisBtn.isEnabled ) {
-    //       innerDiv.style.backgroundColor = that.btnLooks.bgEnabled;
-    //     }
-    //     // innerDiv.style.opacity = '0.8';
-    //   });
-
-    // }); // forEach
-
-    // cbs.forEach( (thisBox) => {
-
-    //   // create div elements
-    //   const outerDiv = document.createElement('div');
-    //   const innerDiv = document.createElement('div');
-    //   const checkBox = document.createElement('input');
-    //   const radioBoxGroup = document.createElement('input');
-
-    //   // apply formatting
-    //   this.outerDivFormat(outerDiv, thisBox);
-    //   this.innerDivFormat(innerDiv, thisBox);
-    //   this.cbFormat(checkBox, thisBox);
-    //   this.radioFormat(checkBox, thisBox);
-
-    //   // join
-    //   checkBoxDiv.appendChild(outerDiv);
-    //   outerDiv.appendChild(innerDiv);
-    //   innerDiv.appendChild(checkBox);
-
-    //   // console.log(checkBox.nodeName);
-
-
-
-    // });
-
-
-
-
   }
 
   outerDivFormat(div, def) {
-
     div.style.opacity = '0.8';
     div.style.width = '70px';
     div.style.cursor = 'pointer';
@@ -683,10 +434,7 @@ export class MapComponent implements OnInit, OnDestroy {
     div.style.textAlign = 'center';
     div.style.marginLeft = '2px';
     div.style.border = '#808080 1px solid';
-
   }
-
-
 
   innerDivFormat(div, def) {
     div.setAttribute('isEnabled', def.isEnabled);
@@ -699,7 +447,6 @@ export class MapComponent implements OnInit, OnDestroy {
     div.style.paddingLeft = '5px';
     div.style.paddingRight = '5px';
     div.innerHTML = def.text;
-
   }
 
   cbFormat(cb, def) {
@@ -720,129 +467,235 @@ export class MapComponent implements OnInit, OnDestroy {
     cb.style.paddingLeft = '5px';
     cb.style.paddingRight = '5px';
   }
-  // formatOuter(div, ctrl) {
 
-  //   const outerDiv = document.createElement('div');
-  //   const innerDiv = document.createElement('div');
-  //   const checkBox = document.createElement('input');
+/**
+ * DEFINE BUTTON CLICK FUNCTIONS
+ */
 
-  //   outerDiv.style.backgroundColor = ctrl.isEnabled ? '#fff' : 'rgb(235, 235, 235)';
-  //   outerDiv.style.opacity = '0.8';
-  //   outerDiv.style.width = '100px';
-  //   outerDiv.style.cursor = 'pointer';
-  //   outerDiv.style.marginBottom = '1px';
-  //   outerDiv.style.textAlign = 'center';
+  setInputEnabled(div) {
 
-  //   innerDiv.setAttribute('isEnabled', ctrl.isEnabled);
-  //   innerDiv.id = ctrl.text;
-  //   innerDiv.style.color = 'black';
-  //   innerDiv.style.fontFamily = 'Roboto,Arial,sans-serif';
-  //   innerDiv.style.fontSize = '12px';
-  //   innerDiv.style.lineHeight = '25px';
-  //   innerDiv.style.paddingLeft = '5px';
-  //   innerDiv.style.paddingRight = '5px';
-  //   innerDiv.innerHTML = ctrl.text;
+    if ( !div ) { return false; }
 
-  //   div.appendChild(outerDiv);
-  //   outerDiv.appendChild(innerDiv);
-  //   innerDiv.appendChild(checkBox);
+    const cb = <HTMLInputElement>document.getElementById('input' + div.id);
+    cb.disabled = false;
+    div.style.backgroundColor =  '#e0e0e0';
+    div.style.color = 'black';
+    clearInterval(this.timer);
 
-  //   // innerDiv.style.textAlign = 'left';
+  }
 
-  //   checkBox.type = 'checkBox';
-  //   checkBox.style.paddingLeft = '5px';
-  //   checkBox.style.paddingRight = '5px';
+  setInputDisabled(div) {
 
+    if ( !div ) { return false; }
 
-  // }
+    const cb = <HTMLInputElement>document.getElementById('input' + div.id);
+    cb.disabled = false;
+    div.style.backgroundColor =  '#e0e0e0';
+    div.style.color = 'black';
+    clearInterval(this.timer);
 
+  }
 
-  // createButtons(div, btn) {
+  cbShowTracks () {
+    const cb = <HTMLInputElement>document.getElementById('inputTracks');
 
-  //   const outerDiv = document.createElement('div');
-  //   const innerDiv = document.createElement('div');
+    if ( cb.checked === true ) {
+      this.tracks.features.forEach( (ftr, i) => {
+        ftr.id = 'tracks-' + i;
+        this.map.data.addGeoJson(ftr);
+      });
 
-  //   // Set CSS for the control border
-  //   outerDiv.style.backgroundColor = btn.isEnabled ? '#fff' : 'rgb(235, 235, 235)';
-  //   outerDiv.style.opacity = '0.8';
-  //   outerDiv.style.width = '100px';
-  //   outerDiv.style.cursor = 'pointer';
-  //   outerDiv.style.marginBottom = '1px';
-  //   outerDiv.style.textAlign = 'center';
-  //   outerDiv.title = btn.rollOver;
+    /**
+     * DEBUG BLOCK
+     * puts a red circle of radius 20m around each route point
+     * */
+      // this.path.features[0].geometry.coordinates.forEach( (c) => {
+      //   const circle = new google.maps.Circle({
+      //     strokeColor: '#FF0000',
+      //     strokeOpacity: 0.8,
+      //     strokeWeight: 2,
+      //     fillOpacity: 0,
+      //     map: this.map,
+      //     center: {'lat': c[1], 'lng': c[0]},
+      //     radius: 20
+      //   });
+      // });
 
-  //   // Set CSS for the control interior
-  //   innerDiv.setAttribute('isEnabled', btn.isEnabled);
-  //   innerDiv.id = btn.text;
-  //   innerDiv.style.color = 'black';
-  //   innerDiv.style.fontFamily = 'Roboto,Arial,sans-serif';
-  //   innerDiv.style.fontSize = '12px';
-  //   innerDiv.style.lineHeight = '25px';
-  //   innerDiv.style.paddingLeft = '5px';
-  //   innerDiv.style.paddingRight = '5px';
-  //   innerDiv.innerHTML = btn.text;
+    /**
+     * DEBUG BLOCK
+     * puts a small black circle at each track point to help visualisation
+     * */
+      // this.tracks.features.forEach( (f) => {
+      //   f.geometry.coordinates.forEach( (c) => {
+      //     const circle = new google.maps.Circle({
+      //       strokeColor: '#000000',
+      //       strokeOpacity: 0.8,
+      //       strokeWeight: 2,
+      //       fillColor: '#000000',
+      //       fillOpacity: 0.35,
+      //       map: this.map,
+      //       center: {'lat': c[1], 'lng': c[0]},
+      //       radius: 0.5
+      //     });
+      //   });
+      // });
 
-  //   // append divs
-  //   div.appendChild(outerDiv);
-  //   outerDiv.appendChild(innerDiv);
+    /**
+     * DEBUG BLOCK
+     * puts a blue circle of radius equal to closest matched track point, around each route point
+     * */
+      // this.match.features[0].geometry.coordinates.forEach( (c, i) => {
+      //   const circle = new google.maps.Circle({
+      //     strokeColor: '#0000FF',
+      //     strokeOpacity: 0.8,
+      //     strokeWeight: 2,
+      //     fillOpacity: 0,
+      //     map: this.map,
+      //     center: {'lat': c[1], 'lng': c[0]},
+      //     radius: this.match.features[0].properties.dist[i].length === 0 ? 0 : Math.min(...this.match.features[0].properties.dist[i])
+      //   });
+      // });
 
-  //   // Attach listeners
-  //   outerDiv.addEventListener('click', btn.clickFunction);
-  //   outerDiv.addEventListener('mouseover', function() {
-  //     outerDiv.style.backgroundColor = 'rgb(235, 235, 235)';
-  //     outerDiv.style.opacity = '0.8';
-  //   });
-  //   outerDiv.addEventListener('mouseout', function() {
-  //     outerDiv.style.backgroundColor = '#fff';
-  //     outerDiv.style.opacity = '0.8';
-  //   });
+    } else {
+      this.tracks.features.forEach( (ftr, i) => {
+        this.map.data.remove(this.map.data.getFeatureById('tracks-' + i));
+      });
+    }
+  }
 
-  // } // createButtons
+  radioClick() {
 
-  // attachListeners() {
+    const r = <HTMLInputElement>document.getElementById('inputRoute');
+    const b = <HTMLInputElement>document.getElementById('inputBinary');
+    const c = <HTMLInputElement>document.getElementById('inputContour');
 
+    if ( r.checked ) {
+      // Route button is active
 
-  //   const mapData = this.map.data;
-  //   let clickedPathData;
+      // remove data
+      try {
+        this.binary.features.forEach( (ftr, i) => {
+          this.map.data.remove(this.map.data.getFeatureById('binary-' + i));
+        });
+      } catch {}
+      try {
+        this.contour.features.forEach( (ftr, i) => {
+          this.map.data.remove(this.map.data.getFeatureById('contour-' + i));
+        });
+      } catch {}
+      // add route
+      this.path.features[0]['id'] = 'route-';
+      this.map.data.addGeoJson(this.path.features[0]);
 
-  //   if ( this.pathAsGeoJson.features.length === 1 ) {
-  //     // only one path is selected, so emit this data. Simples.
-  //     mapService.newMapData.emit(
-  //       this.getDataPackage(this.pathAsGeoJson.features[0]));
+    } else
 
-  //   } else {
+    if ( b.checked ) {
+      // Binary button is active
 
-  //     clickedPathData = {'empty': true};
+      // remove data
+      try {
+        this.map.data.remove(this.map.data.getFeatureById('route-'));
+      } catch {}
+      try {
+        this.contour.features.forEach( (ftr, i) => {
+          this.map.data.remove(this.map.data.getFeatureById('contour-' + i));
+        });
+      } catch {}
+      // add binary
+      this.binary.features.forEach( (ftr, i) => {
+        ftr.id = 'binary-' + i;
+        this.map.data.addGeoJson(ftr);
+      });
+    } else
 
-  //     mapData.addListener('mouseover', (event) => {
-  //       mapData.overrideStyle(event.feature, {strokeOpacity: 1.0, strokeWeight: 5});
-  //       mapService.newMapData.emit(this.getDataPackage(event.feature));
-  //     });
+    if ( c.checked ) {
+      // Contour button is active
 
-  //     mapData.addListener('mouseout', (event) => {
-  //       if (!event.feature.getProperty('isClicked')) {
-  //         mapData.revertStyle(event.feature);
-  //         mapService.newMapData.emit(clickedPathData);
-  //       }
-  //     });
+      // remove data
+      try {
+        this.map.data.remove(this.map.data.getFeatureById('route-'));
+      } catch {}
+      try {
+        this.binary.features.forEach( (ftr, i) => {
+          this.map.data.remove(this.map.data.getFeatureById('binary-' + i));
+        });
+      } catch {}
+      // add contour
+      this.contour.features.forEach( (ftr, i) => {
+        ftr.id = 'contour-' + i;
+        this.map.data.addGeoJson(ftr);
+      });
+    }
+  }
 
-  //     mapData.addListener('click', (event) => {
-  //       if (event.feature.getProperty('isClicked')) {
-  //         event.feature.setProperty('isClicked', false);
-  //         clickedPathData = {'empty': true};
-  //       } else {
-  //         this.pathAsGeoJson.features.map(x => x.properties.isClicked = false);
-  //         event.feature.setProperty('isClicked', true);
-  //         clickedPathData = this.getDataPackage(event.feature);
-  //         mapData.revertStyle();
-  //         mapData.overrideStyle(event.feature, {strokeOpacity: 1.0, strokeWeight: 5});
-  //       }
+  pathLoad() {
+    console.log('click load');
+    console.log(this);
+    this.router.navigate(['load-paths', this.pathType, 'single']);
+  }
 
-  //       // if any of the paths are clicked
-  //       // setBtnState();
-  //     });
-  //   }
-  // }
+  batchLoad () {
+    console.log('click batch load');
+    this.router.navigate(['load-paths', this.pathType, 'batch']);
+  }
+
+  pathDelete() {
+    console.log('click delete');
+    this.http.get('http://localhost:3000/delete-path/' + this.pathType + '/' + this.pathID)
+      .subscribe( () => {
+        // that.updateListService.hasListChanged.emit(true);
+        this.router.navigate(['paths', this.pathType]);
+      });
+  }
+
+  zoomIn() {
+    console.log('click zoom');
+     // needs reviewing:
+    // for (const path of this.pathAsGeoJson.features) {
+    //   if (path.properties.isClicked) {
+    //     this.map.fitBounds({
+    //         north: path.bbox[3],
+    //         south: path.bbox[1],
+    //         east:  path.bbox[2],
+    //         west:  path.bbox[0]
+    //     });
+    //   }
+    // }
+  }
+
+  fitAll() {
+    console.log('click fit');
+    // needs reviewing:
+    // this.map.fitBounds({
+    //   north: this.pathAsGeoJson.bbox[3],
+    //   south: this.pathAsGeoJson.bbox[1],
+    //   east:  this.pathAsGeoJson.bbox[2],
+    //   west:  this.pathAsGeoJson.bbox[0]
+    // });
+  }
+
+  createNew () {
+    console.log('create new');
+    this.router.navigate(['create-route']);
+  }
+
+  pathSave() {
+    console.log('click save');
+    this.openForm();
+  }
+
+  pathDiscard() {
+    console.log('click discard');
+    this.router.navigate(['paths', this.pathType]);
+  }
+
+/**
+ * ON SAVE FORM
+ */
+
+ showGetFilesUI() {
+
+ }
 
   openForm() {
     this.pathName = this.path.features[0].name;
@@ -884,16 +737,7 @@ export class MapComponent implements OnInit, OnDestroy {
       this.http
         .get('http://localhost:3000/match-from-load/' + this.pathID)
         .subscribe( (dataIn) => {
-          this.binary = dataIn['geoBinary'];
-          this.contour = dataIn['geoContour'];
-          this.tracks = dataIn['geoTracks'];
-          this.subsActive = false;
-          console.log(this.binary);
-          console.log(this.tracks);
-          console.log(this.contour);
-          this.setInputEnabled(<HTMLElement>document.getElementById('Tracks'));
-          this.setInputEnabled(<HTMLElement>document.getElementById('Binary'));
-          this.setInputEnabled(<HTMLElement>document.getElementById('Contour'));
+          this.processMatchData(dataIn);
       });
     }
 
@@ -908,71 +752,71 @@ export class MapComponent implements OnInit, OnDestroy {
 
   }
 
+processMatchData(d) {
+  // called by onSave() and ngInit()
+  // sorts incoming data and enables buttons
+
+  this.binary = d['geoBinary'];
+  this.contour = d['geoContour'];
+  this.tracks = d['geoTracks'];
+  // this.match = d['geoMatch'];
+
+  this.subsActive = false;
+
+  console.log(this.binary);
+  console.log(this.tracks);
+  console.log(this.contour);
+  // console.log(this.match);
+
+  this.timer = setInterval( () => {
+    this.setInputEnabled(<HTMLElement>document.getElementById('Tracks'));
+    this.setInputEnabled(<HTMLElement>document.getElementById('Binary'));
+    this.setInputEnabled(<HTMLElement>document.getElementById('Contour'));
+  }, 200);
+
+  // emit data to data component
+  if ( this.pathID !== '0' ) {
+    this.mapService.newMapData.emit({
+      'stats': this.binary.stats,
+    });
+  }
+
+}
+
+/**
+ * DATA TRANSFER
+ */
+
   getDataPackage(source) {
     try {
       return {
         'stats': source.properties.pathStats,
-        'name': source.properties.name,
+        'name': source.name,
+        'description': source.description,
         'color': source.properties.color
       };
     } catch {
       return {
         'stats': source.getProperty('pathStats'),
         'name': source.getProperty('name'),
+        'description': source.getProperty('description'),
         'color': source.getProperty('color')
       };
     }
   }
 
-  // setBtnState() {
-
-  //   if (this.pathAsGeoJson.features
-  //     .map(x => x.properties.isClicked)
-  //     .find(function(y) {return y === true; }) === true) {
-
-  //     const btnIDs = [
-  //       document.getElementById('Zoom In'),
-  //       document.getElementById('Load'),
-  //       document.getElementById('Save'),
-  //       document.getElementById('Delete')];
-
-  //     for (const btn of btnIDs) {
-  //       btn['isEnabled'] = true;
-  //       this.setBtnEnabled(btn, true);
-  //     }
-
-  //   } else {
-
-  //     const btnIDs = [
-  //       document.getElementById('Zoom In'),
-  //       document.getElementById('Load'),
-  //       document.getElementById('Save'),
-  //       document.getElementById('Delete')];
-
-  //     // console.log(btnIDs);
-  //     for (const btn of btnIDs) {
-  //       btn['isEnabled'] = false;
-  //       setBtnEnabled(btn, false);
-  //     }
-  //   }
-
-  // }
 
 
-  // setBtnEnabled(btn, boo) {
-  //   if (boo === true) {
-  //     btn.style.backgroundColor = '#fff';
-  //   } else {
-  //     btn.style.backgroundColor = 'rgb(235, 235, 235)';
-  //   }
-  //   btn.style.fontSize = '12px';
-  //   btn.style.lineHeight = '25px';
-  //   btn.style.paddingLeft = '5px';
-  //   btn.style.paddingRight = '5px';
-  // }
+
+
+
+
+/**
+ *CLEAR UP
+ */
 
   ngOnDestroy() {
-    console.log('unsubscribe');
+    console.log('unsubscribe from paramSubs and myService');
     this.paramSubs.unsubscribe();
     if ( typeof this.myService !== 'undefined' ) {
       this.myService.unsubscribe();

@@ -7,6 +7,8 @@ const bodyParser = require('body-parser');
 const app = express();
 const mongoose = require('mongoose');
 const MongoPath = require('./models/mongo');
+const { Match } = require('./class-match.js');
+// require('mongoose').set('debug', true);
 
 
 // cmd window mongo launch:
@@ -64,6 +66,23 @@ var upload = multer({
   }
 });
 
+// async function updateMatches (ids) {
+
+//   for (var i = 0; i < ids.length; i++) { // note that forEach does not work with await
+
+//     let x = await new Promise( resolve => {
+//       matchNewTrack(ids[i]).resolve();
+//       // if ( matchNewTrack(ids[i]) === true ) {
+//       //   console.log('resolved');
+//       //   resolve();
+//       // }
+//     });
+//     console.log('**************' + x + ', ' + ids[i]);
+
+//   }
+
+// }
+
 app.post('/loadtracks/:singleOrBatch', upload.array('filename', 500), (req, res) => {
 
   // read data into buffer and interprete gpx
@@ -76,26 +95,87 @@ app.post('/loadtracks/:singleOrBatch', upload.array('filename', 500), (req, res)
     // batch upload
     let arrayOfGeoJsons = arrayOfPaths.map(filefun.getSingleGeoJson);
     arrayOfGeoJsons = arrayOfGeoJsons.map( (path) => {
-                            path.isSaved = true;
-                            return path}); // this doesnt look right, review
+      path.isSaved = true;
+      return path});
+
     MongoPath.Tracks
       .insertMany(arrayOfGeoJsons, {writeConcern: {j: true}})
-      .then( () => {
-        res.status(201).json( {'result': 'bulk write ok'} )
+      .then( (documents) => {
+        res.status(201).json({ 'result': 'bulk write ok'});
+
+        trackIds = documents.map( (d) => d._id );
+
+        p = Promise.resolve();
+        for (let i = 0; i < trackIds.length; i++) {
+          p = p.then( () => new Promise( resolve => {
+              matchNewTrack(trackIds[i]).then( () => resolve() );
+            })
+          );
+        }
+
+        // matchNewTrack(trackIds[0]).then( () => {
+        //   console.log('hurrah');
+        //   matchNewTrack(trackIds[1]).then( () => {
+        //     console.log('hurrah2');
+        //   });
+        // });
       });
 
-  } else {
+      // try {
+      //   updateMatches(trackIds);
+      // } catch (error) {
+      //   console.log(error);
+      // }
 
+
+
+        // promiseChain = Promise.resolve()
+        // for (let i = 0; i < trackIds.length; i++) {
+        //   console.log(i);
+        //   promiseChain = promiseChain.then( () => {
+        //     return new Promise( resolve => {
+        //       if ( matchNewTrack(trackIds[i]) === true ) {
+        //         resolve();
+        //       }
+        //     })
+        //   });
+        // }
+
+
+      // id0 = new Promise ( (resolve, rej) => {
+      //     if (matchNewTrack(id)) resolve();
+      // })
+
+      // id0.then( () => {
+      //   console.log('******finished*******');
+        // id1 = new Promise ( (resolve, rej) => {
+        //   if ( matchNewTrack(trackIds[1]) ) {
+        //     resolve();
+        //   }
+        // })
+        // id1.then( () => {
+        //   console.log('******finished*******');
+        // })
+      // })
+
+      //   // trackIds.forEach( (id) => {
+      //   //   matchNewTrack(id);
+      //   // });
+
+
+
+
+
+  } else {
     // single upload
+
     const singleGeoJson = filefun.getSingleGeoJson(arrayOfPaths[0]);
 
     // save to db
-  MongoPath.Tracks
+    MongoPath.Tracks
       .create(singleGeoJson)
       .then( (documents) => {
-        res.status(201).json({
-          'geoJson': filefun.getMultiGeoJson([documents])
-        });
+        res.status(201).json({ 'geoJson': filefun.getMultiGeoJson([documents]) });
       })
   }
 
@@ -323,27 +403,21 @@ app.get('/match-from-load/:id', (req, res) => {
       // find all tracks that intersect with selected route id
       console.log('Matching tracks...');
       MongoPath.Tracks
-        .find(
-          { geometry:
-            { $geoIntersects:
-              { $geometry: geomQuery }
-            }
-          })
+        .find( { geometry: { $geoIntersects: { $geometry: geomQuery } }})
         .then( (results) => {
+
             console.log('Matched ' + results.length + ' tracks');
             const tracks = filefun.getMultiGeoJson(results);
-            match = getMatchArray(route, tracks);
+            const newMatch = new Match();
+            newMatch.run(route, tracks);
 
-            MongoPath.Match
-              .create(match[0])
-              .then( () => {
-              })
+            MongoPath.Match.create(newMatch)
 
             res.status(201).json({
               'geoRoute': route,
               'geoTracks': tracks,
-              'geoBinary': filefun.getMatchGeoJson(match[0], 'binary'),
-              'geoContour': filefun.getMatchGeoJson(match[0], 'contour'),
+              'geoBinary': newMatch.plotBinary(),
+              'geoContour': newMatch.plotContour(),
             })
         },
         (err) => { console.log(err) })
@@ -360,46 +434,44 @@ app.get('/match-from-db/:id', (req, res) => {
 
   const routeId = req.params.id;
 
-  // Get the route from db as need to be sent to FE
-  console.log('Finding matching routes...');
+  // Get match array from db
+  console.log('match-from-db: get matches...');
+  MongoPath.Match
+    .find({'routeId': routeId})
+    .then( (match) => {
 
-  MongoPath.Routes
-  .find({'_id': routeId})
-  .then( (result)  => {
+      // check for no result
+      if ( match.length === 0 ) {
+        console.error('match-from-db: error! no matches found for route: ' + routeId);
+        res.status(201).json({'match-from-db: ': 'error'});
+        return;
+      }
+      const thisMatch = new Match(match[0]);
 
-    const route = filefun.getMultiGeoJson(result, 'route');
+      // extract list of matched tracks, and retrieve these from mongo
+      console.log('match-from-db: get tracks...');
+      MongoPath.Tracks
+        .find( { '_id': { $in: match[0].trksList } } )
+        .then( (result) => {
 
-    // Get match array from db
-    MongoPath.Match
-      .find({'routeId': routeId})
-      .then( (match) => {
-
-          // extract list of matched tracks, and retrieve these from mongo
-          MongoPath.Tracks
-            .find( { '_id':
-              { $in: match[0].trksList } } )
-            .then( (result) => {
-              console.log('Returned ' + result.length + ' tracks');
-
-              // format tracks, get matched geojsons and send to FE
-              const tracks = filefun.getMultiGeoJson(result, 'track');
-              res.status(201).json({
-                'geoRoute': route, //is this needed? Front end already has the route
-                'geoTracks': tracks,
-                'geoBinary': filefun.getMatchGeoJson(match[0], 'binary'),
-                'geoContour': filefun.getMatchGeoJson(match[0], 'contour'),
-              })
-            },
-            (err) => { console.log(err) }
-          )
+          // format tracks, get matched geojsons and send to FE
+          console.log('match-from-db: found ' + result.length + ' tracks');
+          const tracks = filefun.getMultiGeoJson(result, 'track');
+          res.status(201).json({
+            'geoTracks': tracks,
+            'geoContour': thisMatch.plotContour(),
+            'geoBinary': thisMatch.plotBinary()
+          })
+          console.log('match-from-db: finished');
 
         },
         (err) => { console.log(err) }
-       )
+      )
 
-      },
+    },
       (err) => { console.log(err) }
-  )
+    )
+
 })
 
 
@@ -407,42 +479,33 @@ function matchDelete(pathId, pathType) {
 
   if ( pathType === 'route' ) {
     // if this is a route, then simply delete all match data for this route id
+    console.log('routeId: ' + pathId);
 
     MongoPath.Match
-      .deleteMany( {'routeID': pathId} );
+      .deleteOne({'routeId': pathId}, (err) => {});
 
   } else {
     // if this is a track, flush delete track from match data
-
     console.log('trkId: ' + pathId);
 
     // find all match data that contains trackId
     MongoPath.Match
-    .find( { 'trksList': pathId } )
-    .then( (matches) => {
-      matches.forEach( (m) => {
+      .find( { 'trksList': pathId } )
+      .then( (matches) => {
 
-        matchId = m._id;
+        console.log('found ' + matches.length + ' matches')
+        // console.log(matches.map( (r) => r._id ));
 
-        // delete track_id from trksList
-        m.trksList.splice(m.trksList.IndexOf(pathId), 1)
+        matches.forEach( (m) => {
 
-        // delete trackId and min dst from each point
-        m.points.forEach ( (p) => {
-          index = p.trks.IndexOf(pathId);
-          if ( index !== -1 ) {
-            p.trks.splice(index, 1);
-            p.dist.splice(index, 1);
-          }
-        })
 
-        // update match data in db
-        MongoPath.Match
-        .replaceOne(
-          { '_id': matchId },
-          { m },
-          {})
+          const thisMatch = new Match(m)
+          thisMatch.removeTrack(pathId);
 
+          // update match data in db
+          MongoPath.Match
+            .replaceOne( {'_id': m._id}, thisMatch, { writeConcern: { j: true } } )
+            .then( (msg) => {console.log(msg)})
 
       })
     })
@@ -455,227 +518,263 @@ function matchDelete(pathId, pathType) {
  *  Perform route matching on newly uploaded track
  */
 function matchNewTrack(trkId) {
-  // trk is a multiGeoJson object
 
-  console.log('matchNewTrack');
-  MongoPath.Tracks
-    .find({'_id': trkId})
-    .then( (result)  => {
-      console.log('trkId: ' + trkId);
-      const track = filefun.getMultiGeoJson(result);
-      const geomQuery = {
-        'type': 'Polygon',
-        'coordinates': [[
-          [ track.features[0].bbox[0], track.features[0].bbox[1] ],
-          [ track.features[0].bbox[2], track.features[0].bbox[1] ],
-          [ track.features[0].bbox[2], track.features[0].bbox[3] ],
-          [ track.features[0].bbox[0], track.features[0].bbox[3] ],
-          [ track.features[0].bbox[0], track.features[0].bbox[1] ]
-        ]]
-      };
+  return new Promise( resolve => {
+    // find the target track from db
+    console.log('matchNewTrack: get tracks...');
+    MongoPath.Tracks
+      .find({'_id': trkId})
+      .then( (result)  => {
 
-      // find all routes that intersect with selected route id
-      console.log('Matching routes...');
-      MongoPath.Routes
-        .find(
-          { geometry:
-            { $geoIntersects:
-              { $geometry: geomQuery }
-            }
-          })
-        .then( (results) => {
-            console.log('Matched ' + results.length + ' routes to this track');
-            const routes = filefun.getMultiGeoJson(results);
-            routeIds = results.map( (r) => r._id );
-            console.log(routeIds);
+        // check for no result
+        if ( result.length === 0 ) {
+          console.error('matchNewTrack: error! track not found: ' + trkId);
+          res.status(201).json({'matchNewTrack: ': 'error'});
 
-            MongoPath.Match
-              .find( { 'routeId':
-                { $in: routeIds } } )
-              .then( (matches) => {
-                match = getMatchArray(routes, track, matches);
+          // resolve the promise
+          resolve();
+        }
 
+        // convert to geoJson and get bounding box for search query
+        const track = filefun.getMultiGeoJson(result);
+        const geomQuery = {
+          'type': 'Polygon',
+          'coordinates': [[
+            [ track.features[0].bbox[0], track.features[0].bbox[1] ],
+            [ track.features[0].bbox[2], track.features[0].bbox[1] ],
+            [ track.features[0].bbox[2], track.features[0].bbox[3] ],
+            [ track.features[0].bbox[0], track.features[0].bbox[3] ],
+            [ track.features[0].bbox[0], track.features[0].bbox[1] ]
+          ]]
+        };
 
-                // console.log('updated route: ' + )
-                MongoPath.Match
-                  .updateOne(
-                    { 'id': { $in: match[0].trksList }},
-                    { $set: {
-                      'dist': match[0]['dist'],
-                      'trksArray': match[0]['trksArray'],
-                      'trksList': match[0]['trksList'],
-                      'nmatch': match[0]['nmatch'] }
-                    },
-                    {})
+        // find all routes that intersect with selected route id
+        console.log('matchNewTrack: get routes...');
+        MongoPath.Routes
+          .find( { geometry: { $geoIntersects: { $geometry: geomQuery } } })
+          .then( (results) => {
 
-                  .then( () => {
+              const routes = filefun.getMultiGeoJson(results);
+              const routeIds = results.map( (r) => r._id );
+              console.log('matchNewTrack: matched  ' + results.length + ' routes to this track');
+
+              // get the match data for selected routes
+              MongoPath.Match
+                .find( { 'routeId': { $in: routeIds } } )
+                .then( (matches) => {
+
+                  // get Ids of matches (in case route matches more than one route)
+                  console.log('matchNewTrack: found ' + matches.length + ' match');
+
+                  if (matches.length === 0 ) {
+                    // resolve the promise
+                    resolve();
+                  }
+                  // loop through each returned match
+                  matches.forEach( (m) => {
+
+                    // const thisMatch = new Match(m.length === 0 ? null : m);
+                    const thisMatch = new Match(m);
+                    thisMatch.run(routes, track);
+
+                    // save to db
+                    MongoPath.Match
+                      .replaceOne( {'_id': m._id}, thisMatch, {writeConcern: { j: true}})
+                      .then( (msg) => {
+                        console.log(msg);
+
+                        // resolve the promise
+                        resolve(true);
+                      });
+
                   })
 
-        },
-        (err) => { console.log(err) }
-        )  // MongoPath.Match
-
-      },
-      (err) => { console.log(err) }
-      ) // MongoPath.Routes
-    },
-
-  (err) => { console.log(err) }
-  ) // MongoPath.Tracks
+              })  // MongoPath.Match
+          }) // MongoPath.Routes
+      }) // MongoPath.Tracks
+    });
 
 }
 
-/**
- *  Route matching algorithm
- *
- * NOtes from previous ruby implmentation
-  # 1) for each route point check against all bounding boxes as you go, thereby removing outer loop ... quicker?
-	# 2) optimise 'point skipping' logic
-	# 3) implement 'point skipping' on route points
-	# 4) better selection of tracks from mysql database
-	# 5) better utilisation of mysql - return only sections of route of interest??
-  # 6) employ route simplification?
- *
- * Implemntation approach
- * ======================
- * For each provided route
- *   For each provided track
- *     Loop through route points, for each route point
- *       Check if route point is within bounding box of current selected track
- *         If it is, then loop through all the points of the track to find point closest to current route point
- *         If it isn't, then just carry on
- *       End of loop
- *     End of loop
- *   End of loop
- * End of loop
- */
-function getMatchArray(rtes, trks, mtchs) {
 
-  // rtes and trks supplied as multiGeoJson
-  // mtches is an array of match objects, ie mtchs = [{},{},{}]
-  // expectations:
-  //  1a) if n routes > 1 then n tracks = 1
-  //  1b) if n tracks > 1 then n routes = 1
-  //  i.e. n routes and n tracks cannot both be greater than 1
-  //  2) if optional argument matches is supplied, n routes = n matches
+// function getMatchArrays(rtes, trks, mtchs) {
 
-  // match data details
-  // ------------------
-  // coords and bbox are repeated here to save sending another array to getMatchGeoJson function
-  // match{
-  //   routeId: 'string',
-  //   bbox: [],
-  //   trksList: [],
-  //   points {
-  //     latlng: [],
-  //     trks: [],
-  //     dist: [],
-  //     nmatch: number
-  //   }
-  // }
+//   // checks all required data is present, then calls matchLogic
+//   // rtes and trks supplied as multiGeoJson
+//   // mtches is an array of match objects, ie mtchs = [{},{},{}]
+//   // expectations:
+//   //  1a) if n routes > 1 then n tracks = 1
+//   //  1b) if n tracks > 1 then n routes = 1
+//   //  i.e. n routes and n tracks cannot both be greater than 1
+//   //  2) if optional argument matches is supplied, n routes = n matches
 
-  let match = {};
-  let matchReturn = [];
-  const fudgeFactor = 1.0001;
-  const matchTolerance = 20;  // in metres
+//   let matches = []; // array of match objects
 
-  // apply expectations on incoming data
-  if ( rtes.features.length > 1 && trks.features.length > 1 ) {
-    console.error( 'Error from getMatchArray: number of routes > 1 AND number of tracks > 1');
-    return
-  }
-  if ( mtchs ) {
-    if ( rtes.features.length !== mtchs.length ) {
-      console.error( 'Error from getMatchArray: number of routes <> number of matches');
-      return
-    }
-  }
+//   // apply expectations on incoming data
+//   if ( rtes.features.length > 1 && trks.features.length > 1 ) {
+//     console.error( 'Error from getMatchArray: number of routes > 1 AND number of tracks > 1');
+//     return
+//   } else if ( mtchs ) {
+//     if ( rtes.features.length !== mtchs.length ) {
+//       console.error( 'Error from getMatchArray: number of routes <> number of matches');
+//       return
+//     }
+//   }
 
-  // loop through each provided route
-  rtes.features.forEach( (rte, iRte) => {
+//   // loop through each provided route
+//   rtes.features.forEach( (rte, i) => {
+//     if ( !mtchs ) {
+//       // matches.push(new Match(rte._id, rte.bbox, rte.geometry.coordinates));
+//       matches.push(new Match().fromNew(rte._id, rte.bbox, rte.geometry.coordinates));
+//     } else {
+//       // matches.push(mtchs[i]);
+//       matches.push(new Match().fromExisting(mtchs[i]));
+//     }
+
+//   })
+
+//   console.log(matches);
+//   matchLogic(rtes, trks, matches);
 
 
-    if ( mtchs ) {
-      // if there is existing route match data
-      console.log('found match array');
-      match = mtchs[iRte];
-      console.log(match);
+// };
 
-    } else {
-    // else if there isnt
-      console.log('Didn\'t find match array');
-      match = {
-        'routeId': rte._id,
-        'bbox': rte.bbox,
-        'trksList': [],
-        'points': rte.geometry.coordinates.map( (p) => {
-               return { 'lnglat': p ,
-                        'trks':   [] ,
-                        'dist':   [] ,
-                        'nmatch': 0 }
-          })
-      }
+// class Data extends Match {
+//   constructor(rtes, trks) {
+//     data = matchLogic(rtes, trks, mtchs);
+//     this.trks = data.trks;
+//     this.dist = data.dist;
+//     this.trksList = data.trksList;
+//     this.getStats();
+//   }
 
-    }
+//   addTrack(trkId){
+//     this.matchLogic();
+//     this.getStats();
+//   }
 
-    // loop through each track
-    trks.features.forEach( (trk) => {
+//   removeTrack(trkId) {
 
-      // find bounding box coords for current track
-      minLng = trk.bbox[0] < 0 ? trk.bbox[0] * fudgeFactor : trk.bbox[0] / fudgeFactor;
-      minLat = trk.bbox[1] < 0 ? trk.bbox[1] * fudgeFactor : trk.bbox[1] / fudgeFactor;
-      maxLng = trk.bbox[2] < 0 ? trk.bbox[2] / fudgeFactor : trk.bbox[2] * fudgeFactor;
-      maxLat = trk.bbox[3] < 0 ? trk.bbox[3] / fudgeFactor : trk.bbox[3] * fudgeFactor;
+//     this.trksList.splice(this.trksList.indexOf(trkId), 1)
+//     this.lnglat.forEach ( (p) => {
+//       index = p.trks.indexOf(trkId);
+//       if ( index !== -1 ) {
+//         p.trks.splice(index, 1);
+//         p.dist.splice(index, 1);
+//         p.nmatch--;
+//       }
+//     })
+//     this.getStats();
 
-      // loop through each route point
-      rte.geometry.coordinates.forEach( (rtePt, iRtePt) => {
+//   }
 
-        // check if current route point is within bounding box of current track
-        if ( rtePt[0] < maxLng && rtePt[0] > minLng && rtePt[1] < maxLat && rtePt[1] > minLat ) {
+//   getStats(){
 
-          // if route point is within tracks bounding box, loop trhough track to find matching point(s)
-          trk.geometry.coordinates.forEach( (trkPt) => {
+//   }
+// }
 
-            // get distance from route point and track point
-            dist = gpsfun.p2p(rtePt, trkPt);
 
-            // if dist < tol then update matched arrays
-            // match.dist[iRtePt] = dist < match.dist[iRtePt] ? dist : match.dist[iRtePt];
-            if ( dist < matchTolerance ) {
 
-              const index = match.points[iRtePt].trks.indexOf(trk._id)
-              if ( index === -1 ) {
-                // if track is not found on current point, push it to array
-                match.points[iRtePt].trks.push(trk._id);
-                match.points[iRtePt].dist = dist;
-                match.points[iRtePt].nmatch++;
+// function matchLogic(r, t, m) {
 
-              } else {
-                // otherwise update distance in array but dont record another match (nmatch) or trkId
-                match.points[index].dist = match.points[index].dist < dist ? match.points[index].dist : dist
-              }
+  /**
+   *  Route matching algorithm
+   *
+   * Notes from previous ruby implmentation
+    # 1) for each route point check against all bounding boxes as you go, thereby removing outer loop ... quicker?
+    # 2) optimise 'point skipping' logic
+    # 3) implement 'point skipping' on route points
+    # 4) better selection of tracks from mysql database
+    # 5) better utilisation of mysql - return only sections of route of interest??
+    # 6) employ route simplification?
+   *
+   * Implemntation approach
+   * ======================
+   * For each provided route
+   *   For each provided track
+   *     Loop through route points, for each route point
+   *       Check if route point is within bounding box of current selected track
+   *         If it is, then loop through all the points of the track to find point closest to current route point
+   *         If it isn't, then just carry on
+   *       End of loop
+   *     End of loop
+   *   End of loop
+   * End of loop
+   */
 
-              // if track is not found in overall tracks list, push it
-              console.log('before, ' + match.trksList);
-              if ( !match.trksList.includes(trk._id) ) {
-                // match.trksList.push(trk._id);
-              }
-            } // if ( dist ...
+//   const fudgeFactor = 1.0001;
+//   const matchTolerance = 20;  // in metres
+//   let ms = [];
 
-          }) //trk.forEach
+//   console.log('start match loops...');
 
-        } // if ( rtePt[0] ...
+//   // loop through each route
+//   r.features.forEach( (rte) => {
 
-      }) // rteCoords.forEach
+//     // loop through each track
+//     t.features.forEach( (trk) => {
 
-    }) // trks.forEach
+//       // find bounding box coords for current track
+//       minLng = trk.bbox[0] < 0 ? trk.bbox[0] * fudgeFactor : trk.bbox[0] / fudgeFactor;
+//       minLat = trk.bbox[1] < 0 ? trk.bbox[1] * fudgeFactor : trk.bbox[1] / fudgeFactor;
+//       maxLng = trk.bbox[2] < 0 ? trk.bbox[2] / fudgeFactor : trk.bbox[2] * fudgeFactor;
+//       maxLat = trk.bbox[3] < 0 ? trk.bbox[3] / fudgeFactor : trk.bbox[3] * fudgeFactor;
 
-    matchReturn.push(match);
+//       // loop through each route point
+//       rte.geometry.coordinates.forEach( (rtePt, iRtePt) => {
 
-  }) // rtes.forEach
+//         // check if current route point is within bounding box of current track
+//         if ( rtePt[0] < maxLng && rtePt[0] > minLng && rtePt[1] < maxLat && rtePt[1] > minLat ) {
 
-  return matchReturn;
+//           // if route point is within tracks bounding box, loop trhough track to find matching point(s)
+//           trk.geometry.coordinates.forEach( (trkPt, itrkPt) => {
 
-}
+//             // get distance from route point and track point
+//             dist = gpsfun.p2p(rtePt, trkPt);
+
+//             // if dist < tol then update matched arrays
+//             if ( dist < matchTolerance ) {
+//               const index = match.points[iRtePt].trks.indexOf(trk._id)
+
+//               if ( index === -1 ) {
+//                 // if track is not found on current point, push it to array
+//                 m.points[iRtePt].trks.push(trk._id);
+//                 m.points[iRtePt].dist.push(dist);
+//                 m.points[iRtePt].nmatch++;
+//               } else {
+//                 // otherwise update distance in array but dont record another match (nmatch) or trkId
+//                 if ( dist < match.points[iRtePt].dist[index] ) {
+//                   m.points[iRtePt].dist[index] = dist;
+//                 }
+//               }
+
+//               // if track is not found in overall tracks list, push it
+//               if ( match.trksList.indexOf(trk._id) === -1 ) {
+//                 m.trksList.push(trk._id);
+//               }
+//             } // if ( dist ...
+
+//           }) //trk.forEach
+
+//         } // if ( rtePt[0] ...
+
+//       }) // rteCoords.forEach
+
+//     }) // t.forEach
+
+//     console.log('finished match loops.')
+
+//     m.stats = getMatchStats(m);
+//     ms.push(m);
+
+//   }) // rtes.forEach
+
+//   return ms;
+
+// }
+
+// function getMatchStats(m) {
+
+// }
 
 module.exports = app;

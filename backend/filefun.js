@@ -207,7 +207,7 @@ function getSingleGeoJson(path) {
     "type": "Feature",
     "geometry": {
       "type": "LineString",
-      "coordinates": path.points.map(x => [x.latLng[1], x.latLng[0]])
+      "coordinates": path.points.map(x => [x.latLng[1], x.latLng[0]]) // store as lng, lat
     },
     "properties": {
       // "timeArray": path.points.map(x => x.timeStamp),
@@ -230,154 +230,137 @@ function getSingleGeoJson(path) {
 
 };
 
-function getMatchGeoJson(matchArr, type) {
+// function getMatchGeoJson(matchArr, type) {
 
-  // console.log('getGeoJson: ' + type);
-  let geomArr = [];
-  if ( type === 'contour') {
+//   // console.log('getGeoJson: ' + type);
+//   let geomArr = [];
+//   if ( type === 'contour') {
 
-    // get colour palette for contours
-    const nColours = 9;
-    colours = contourPalette(nColours);
+//     // get colour palette for contours
+//     const nColours = 9;
+//     colours = contourPalette(nColours);
 
-    // find min and max number of matches for contour plot
-    // find the max of (minimum for each two adjacent numbers)
-    let min = 9999;
-    let max = -1;
-    let i = 0;
+//     // find min and max number of matches for contour plot
+//     // find the max of (minimum for each two adjacent numbers)
+//     let min = 9999;
+//     let max = -1;
+//     let i = 0;
 
-    while (i <= matchArr.points.length - 1 ) {
-      if ( i > 0) {
-          mintemp = Math.max(matchArr.points[i].nmatch, matchArr.points[i-1].nmatch);
-          maxtemp = Math.min(matchArr.points[i].nmatch, matchArr.points[i-1].nmatch);
-          min = mintemp < min ? mintemp : min;
-          max = maxtemp > max ? maxtemp : max;
-      }
-      i++;
-    }
+//     while (i <= matchArr.points.length - 1 ) {
+//       if ( i > 0 ) {
+//         if ( matchArr.points[i].nmatch !== -1 && matchArr.points[i-1].nmatch !== -1 ) {
+//             mintemp = Math.max(matchArr.points[i].nmatch, matchArr.points[i-1].nmatch);
+//             maxtemp = Math.min(matchArr.points[i].nmatch, matchArr.points[i-1].nmatch);
+//             min = mintemp < min ? mintemp : min;
+//             max = maxtemp > max ? maxtemp : max;
+//         }
+//       }
+//       i++;
+//     }
 
-    shift = (max - min) / (nColours - 1) * 0.5;
-    i = 0;
-    let i0 = 0;
-    let c0;
-    while ( i < matchArr.points.length ) {
-      if ( i !== 0 ) {
+//     shift = (max - min) / (nColours - 1) * 0.5;
+//     i = 0;
+//     let i0 = 0;
+//     let c0;
+//     while ( i < matchArr.points.length ) {
+//       if ( i !== 0 ) {
 
-        nMatches = Math.min(matchArr.points[i].nmatch, matchArr.points[i-1].nmatch);
-        cIndex = Math.ceil((nMatches - min + shift) / (max - min + 2*shift) * nColours);
+//         nMatches = Math.min(
+//           matchArr.points[i].nmatch == -1 ? 0 : matchArr.points[i].nmatch,
+//           matchArr.points[i-1].nmatch == -1 ? 0 : matchArr.points[i-1].nmatch
+//         );
+//         // console.log(matchArr.points[i].nmatch + ', ' + nMatches);
+//         cIndex = Math.ceil((nMatches - min + shift) / (max - min + 2*shift) * nColours);
 
-        // only check on 2nd pass through we we need access to first line's colour (via cIndex)
-        if ( (i > 1 && cIndex !== c0) || i === matchArr.points.length - 1 ) {
+//         // only check on 2nd pass through we we need access to first line's colour (via cIndex)
+//         if ( (i > 1 && cIndex !== c0) || i === matchArr.points.length - 1 ) {
 
-          colour = colours[c0-1];
-          i = i === matchArr.points.length - 1 ? i++ : i;
-          // console.log(matchArr.nmatch[i] + ', ' + matchArr.nmatch[i-1] + ', ' + nMatches + ', ' + cIndex + ', ' + colour)
+//           colour = colours[c0-1];
+//           i = i === matchArr.points.length - 1 ? i++ : i;
+//           // console.log(matchArr.nmatch[i] + ', ' + matchArr.nmatch[i-1] + ', ' + nMatches + ', ' + cIndex + ', ' + colour)
 
-          geomArr.push({
-            'type': 'Feature',
-            'geometry':
-              {'coordinates' : matchArr.points.slice(i0, i).map( (p) => p.lnglat),
-                'type': 'LineString'},
-            'properties':
-              {'color': colour}
-          });
+//           geomArr.push({
+//             'type': 'Feature',
+//             'geometry':
+//               {'coordinates' : matchArr.points.slice(i0, i).map( (p) => p.lnglat),
+//                 'type': 'LineString'},
+//             'properties':
+//               {'color': colour}
+//           });
 
-          i0 = i - 1;
-
-
-      } // if (matchArr ...
-      c0 = cIndex;
-    } // if (!i ...
-      i++;
-    } // while
-
-  } else { //type === 'binary'
-
-    i = 0;
-    i0 = 0;
-    let a, a0, c0;
-
-    while ( i < matchArr.points.length ) {
-
-      a = matchArr.points[i].nmatch === 0 ? 0 : 1;
-      if ( i !== 0 ) {
-
-        colour = (a === 1 && a0 === 1) ?  '#0000FF' : '#000000';
-        if ( i > 1 && colour !== c0 || i === matchArr.points.length - 1 ) {
-          // colour has changed or its the last data point
-
-          i = ( i === matchArr.points.length - 1 ) ? i++ : i;
-          geomArr.push({
-            'type': 'Feature',
-            'geometry':
-              {'coordinates' : matchArr.points.slice(i0, i).map( (p) => p.lnglat),
-                'type': 'LineString'},
-            'properties':
-              {'color': c0}
-          });
-          i0 = i-1;
-
-        }
-        a0 = a;
-        c0 = colour;
-
-      } else {
-        a0 = a;
-
-      }// if
-
-      i++;
-    } // while
-  } // else
-
-  return {
-    "type": "FeatureCollection",
-    "bbox": matchArr.bbox,
-    "features": geomArr.map(x => x)
-  }
+//           i0 = i - 1;
 
 
-}
+//       } // if (matchArr ...
+//       c0 = cIndex;
+//     } // if (!i ...
+//       i++;
+//     } // while
+
+//   }
+//   else if (type === 'binary') {
+//     //type === 'binary'
+
+//     i = 0;
+//     i0 = 0;
+//     let a, a0, c0;
+
+//     while ( i < matchArr.points.length ) {
+
+//       a = matchArr.points[i].nmatch === 0 ? 0 : 1;
+//       if ( i !== 0 ) {
+
+//         colour = (a === 1 && a0 === 1) ?  '#0000FF' : '#000000';
+//         if ( i > 1 && colour !== c0 || i === matchArr.points.length - 1 ) {
+//           // colour has changed or its the last data point
+
+//           i = ( i === matchArr.points.length - 1 ) ? i++ : i;
+//           geomArr.push({
+//             'type': 'Feature',
+//             'geometry':
+//               {'coordinates' : matchArr.points.slice(i0, i).map( (p) => p.lnglat),
+//                 'type': 'LineString'},
+//             'properties':
+//               {'color': c0}
+//           });
+//           i0 = i-1;
+
+//         }
+//         a0 = a;
+//         c0 = colour;
+
+//       } else {
+//         a0 = a;
+
+//       }// if
+
+//       i++;
+//     } // while
+//   } // else
+//   else if ( type = 'match' ) {
+
+//       geomArr.push({
+//         'type': 'Feature',
+//         'geometry':
+//           {'coordinates': matchArr.points.map( (p) => p.lnglat),
+//             'type': 'LineString'},
+//         'properties':
+//           {'dist':  matchArr.points.map( (p) => p.dist ) }
+//       });
+
+//   }
+
+//   return {
+//     "type": "FeatureCollection",
+//     "plotType": type,
+//     "stats": matchArr.stats,
+//     "bbox": matchArr.bbox,
+//     "features": geomArr.map(x => x)
+//   }
 
 
-function contourPalette(nLevels) {
+// }
 
-  const highColour = '0000FF'; //blue
-  const lowColour = 'FFFFFF';
-
-  // populate array with reqd steps as ratio 0 --> 1
-  var levels = [];
-  while (levels.length < nLevels) levels.push(levels.length/(nLevels-1));
-
-  // convert colour strings to rgb and interpolate to levels
-  rgbArray = levels.map(x => getRGB(highColour,lowColour,x));
-
-  // with converted rgb array, construct new colour HEXs
-  var hexArray = [];
-  rgbArray.forEach( (rgb) => {
-    s = '#';
-    rgb.forEach( (x) => {
-      s = s + padInt(x.toString(16), 2);
-    })
-    hexArray.push(s);
-  })
-
-  return hexArray;
-
-}
-
-function getRGB(c1, c2, ratio) {
-  var r = Math.ceil(parseInt(c1.substring(0,2), 16) * ratio + parseInt(c2.substring(0,2), 16) * (1-ratio));
-  var g = Math.ceil(parseInt(c1.substring(2,4), 16) * ratio + parseInt(c2.substring(2,4), 16) * (1-ratio));
-  var b = Math.ceil(parseInt(c1.substring(4,6), 16) * ratio + parseInt(c2.substring(4,6), 16) * (1-ratio));
-  return [r, g, b];
-}
-
-function padInt(num, size) {
-  var s = num;
-  while (s.length < size) s = '0' + s
-  return s;
-}
 
 /**
  *
@@ -431,6 +414,5 @@ module.exports = {
   readUploadedFile,
   gpxToPath,
   getSingleGeoJson,
-  getMultiGeoJson,
-  getMatchGeoJson
+  getMultiGeoJson
 };

@@ -44,103 +44,46 @@ class Path {
   // Stats method on the Path class
   stats () {
 
-    var i = 0
-    var asc = 0, desc = 0, up = 0, dn = 0, delta = 0, dx = 0;
-    var maxUp = -999, maxDn = 999, upGrad = 0, dnGrad = 0, gradient = 0;
-    var cumDist = 0, maxDist = 0, maxGrad = -999, minGrad = 999;
-    var minLat = 180, maxLat = -180, minLng = 180, maxLng = -180;
+    let asc = 0, dsc = 0;
+    let cumDist = 0, maxDist = 0
+    let minLat = 180, maxLat = -180, minLng = 180, maxLng = -180;
 
     // const nSmooth = 5; //number of points over which to smooth gradient
 
-    while (i <= this.points.length-1) {
+    this.points.forEach( (point, index) => {
 
       // Calculate statistics
       // skip the first point and compare this point to the previous one
-      if (i != 0) {
+      if (index != 0) {
 
-        //Cumulative distance
-        var dist = p2p(this.points[i-1].latLng, this.points[i].latLng);
+        // Cumulative distance
+        let dist = p2p(this.points[index-1].latLng, this.points[index].latLng);
         cumDist += dist;
         maxDist = dist > maxDist ? dist : maxDist;
 
-        // Calculate Elevation gain and longest climb/descent
-        delta = this.points[i].elev - this.points[i-1].elev;
-        if (delta > 0) {
-          asc += delta;
-          if (dn != 0) {
-            dn = 0;
-            dx = 0;
-            up = delta
-          }
-          else {
-            up += delta;
-            dx += dist;
-          }
+        // Calculate ascent and descent if elevantion data is available
+        if ( this.points[index].elev ) {
+          let delta = this.points[index].elev - this.points[index-1].elev;
+          asc = delta > 0 ? asc + delta : asc;
+          dsc = delta > 0 ? dsc + delta : dsc;
         }
-        else { // delta < 0
-          desc -= delta;
-          if (up != 0) {
-            up = 0;
-            dx = 0;
-            dn = -delta
-          }
-          else {
-            dn -= delta;
-            dx += dist;
-          }
-        }
-        if (up > maxUp) {
-          maxUp = up;
-          upGrad = up/dx * 100;
-        }
-        if (dn < maxDn) {
-          maxDn = dn;
-          dnGrad = dn/dx * 100;
-        }
-
-
-        // max and min gradient
-        gradient = delta / dist * 100;
-        maxGrad = gradient > maxGrad ? gradient : maxGrad;
-        minGrad = gradient > maxGrad ? gradient : minGrad;
 
       } // end if
 
       // Determine max lat/long for bounding box
-      minLat = this.points[i].latLng[0] < minLat ? this.points[i].latLng[0] : minLat;
-      minLng = this.points[i].latLng[1] < minLng ? this.points[i].latLng[1] : minLng;
-      maxLat = this.points[i].latLng[0] > maxLat ? this.points[i].latLng[0] : maxLat;
-      maxLng = this.points[i].latLng[1] > maxLng ? this.points[i].latLng[1] : maxLng;
+      minLat = point.latLng[0] < minLat ? point.latLng[0] : minLat;
+      minLng = point.latLng[1] < minLng ? point.latLng[1] : minLng;
+      maxLat = point.latLng[0] > maxLat ? point.latLng[0] : maxLat;
+      maxLng = point.latLng[1] > maxLng ? point.latLng[1] : maxLng;
 
-      i++;
-
-    };
-
-    if ( isNaN(asc) ) {
-      asc = 0;
-    }
-    if ( isNaN(desc) ) {
-      desc = 0;
-    }
+    });
 
     return {totalDistance: cumDist,
             totalAscent: asc,
-            totalDescent: desc,
-            longestClimb: maxUp,
-            longestDescent: maxDn,
-            longestClimbGradient: upGrad,
-            longestDescentGradient: dnGrad,
-            maxGradient: maxGrad,
-            minGradient: minGrad,
+            totalDescent: dsc,
             maxDistBtwnTwoPoints: maxDist,
             aveDistBtwnTwoPoints: cumDist/(this.points.length-1),
-            boundingBoxJson: [[
-              [minLng, minLat],
-              [maxLng, minLat],
-              [maxLng, maxLat],
-              [minLng, maxLat],
-              [minLng, minLat]
-            ]],
+            boundingBoxJson: [ [[minLng, minLat],[maxLng, minLat],[maxLng, maxLat],[minLng, maxLat],[minLng, minLat]] ],
             boundingBox: [minLng, minLat, maxLng, maxLat]
           };
   };
@@ -155,29 +98,33 @@ class Path {
  * Vincenty's formula is more accurate but more expensive
  * https://en.wikipedia.org/wiki/Vincenty's_formulae
  *
- * latLng1 is lat/lng of point 1 in decimal degrees
- * latLng2 is lat/lng of point 1 in decimal degrees
+ * lngLat1 is lng/lat of point 1 in decimal degrees
+ * lngLat2 is lng/lat of point 1 in decimal degrees
  *
  * https://www.movable-type.co.uk/scripts/latlong.html
  * can be sped up: https://stackoverflow.com/questions/27928
  */
 
-function p2p(latLng1, latLng2) {
+function p2p(lngLat1, lngLat2) {
 
   const R = 6378.137;     // radius of earth
 
-  var lat1 = degs2Rads(latLng1[0]);
-  var lng1 = degs2Rads(latLng1[1]);
-  var lat2 = degs2Rads(latLng2[0]);
-  var lng2 = degs2Rads(latLng2[1]);
+
+  var lat1 = degs2Rads(lngLat1[1]);
+  var lng1 = degs2Rads(lngLat1[0]);
+  var lat2 = degs2Rads(lngLat2[1]);
+  var lng2 = degs2Rads(lngLat2[0]);
 
 	var dlat = lat1 - lat2;
   var dlng = lng1 - lng2;
 
 	var a = (Math.sin(dlat/2.0) ** 2.0 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlng/2.0) ** 2.0) ** 0.5;
   c = 2.0 * Math.asin(a);
+  d = R * c * 1000.0;  // distance in metres
 
-  return R * c * 1000.0;  // distance in metres
+  // console.log('@@ ' + lngLat1 + ', ' + lngLat2 + ', ' + d + ' @@')
+
+  return d;
 
 }
 

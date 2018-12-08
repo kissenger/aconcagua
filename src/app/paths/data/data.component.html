@@ -1,0 +1,22 @@
+Name: {{pathName}}
+<p>
+Description:
+<br>
+{{pathDescription}}
+<p>
+Distance: {{totalDistance/1000 | number: '1.1-1'}}km
+<br>
+Ascent: {{totalAscent | number: '1.0-0'}}m
+<br>
+Descent: {{totalDescent | number: '1.0-0'}}m
+<br>
+Max p2p distance: {{maxDistBtwnTwoPoints | number: '1.1-1'}}m
+<br>
+Ave p2p distance: {{aveDistBtwnTwoPoints | number: '1.1-1'}}m
+<br>
+Distance complete: {{matchDistance/1000 | number: '1.1-1'}}km
+<br>
+Proportion complete: {{matchDistance/totalDistance*100 | number: '1.1-1'}}%
+<br>
+
+

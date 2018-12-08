@@ -19,7 +19,9 @@ const pathSchema = mongoose.Schema({
     pathStats: {
       totalDistance: {type: Number},
       totalAscent: {type: Number},
-      totalDescent: {type: Number}
+      totalDescent: {type: Number},
+      maxDistBtwnTwoPoints: {type: Number},
+      aveDistBtwnTwoPoints: {type: Number}
     }
   }
 });
@@ -28,12 +30,11 @@ matchSchema = mongoose.Schema({
   routeId: {type: String},
   bbox: {type: [Number]},
   trksList: {type: [String]},
-  points: [{
-    lnglat: {type: [Number]},
-    trks: {type: [String]},
-    dist: {type: [Number]},
-    nmatch: {type: Number}
-  }]
+  matchDistance: {type: Number},
+  nmatch: {type: [Number]},
+  lngLat: {type: [[Number]]},
+  tracks: {type: [[String]]},
+  dist: {type: [[]], default: undefined} // for some reason defining type Number throws an intermittent error
 });
 
 
