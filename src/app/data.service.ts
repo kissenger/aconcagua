@@ -1,25 +1,19 @@
 import { EventEmitter, Injectable } from '@angular/core';
-// import { BehaviorSubject } from 'rxjs/BehaviorSubject';
+
+
+/**
+ *
+ * Facilitates data exchange between components
+ *
+ */
 
 @Injectable()
 export class DataService {
-// DataService facilitates data exchange between
-  gotNewData = new EventEmitter();
+
+  // from load component to map component
+  fromLoadToMap = new EventEmitter();
+
+  // from map component to data component
+  fromMapToData = new EventEmitter();
 
 }
-
-@Injectable()
-export class MapService {
-// MapService facilitates data exchange between clicked path and data element
-  newMapData = new EventEmitter();
-
-}
-
-@Injectable()
-export class UpdateListService {
-
-  // private myData = new BehaviorSubject(null);
-  hasListChanged = new EventEmitter();
-
-}
-

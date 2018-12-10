@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { DataService } from '../../data.service';
-import { MapService } from '../../data.service';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
@@ -29,8 +28,8 @@ export class DataComponent implements OnInit, OnDestroy {
   public matchDistance = '';
 
   constructor(
-    // private dataService: DataService,
-    private mapService: MapService) {}
+    private dataService: DataService
+    ) {}
 
 //   openForm() {
 //     document.getElementById('myForm').style.display = 'block';
@@ -47,8 +46,8 @@ export class DataComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
 
-    this.myService = this.mapService.newMapData.
-      subscribe((dataFromMap) => {
+    this.myService = this.dataService.fromMapToData.
+      subscribe( (dataFromMap) => {
         console.log(dataFromMap);
 
         if ( 'matchDistance' in dataFromMap.stats ) {

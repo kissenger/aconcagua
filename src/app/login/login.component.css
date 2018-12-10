@@ -1,0 +1,35 @@
+
+div {
+  border: red 0px solid;
+}
+hr.hr-navbar {
+    margin: 5px 60px 0px 30px;
+    opacity: 1;
+}
+
+.footer-internal-left {
+    display: inline-block;
+    margin-left: 30px;
+    font-size: 15px;
+    /* width: 300px; */
+    color: white;
+    opacity: 1;
+}
+
+.footer-internal-right {
+/*
+  display: inline-block;
+  margin-left: auto;
+  margin-right: 60px;
+  width: 300px; */
+  text-align: right;
+  /* margin:auto; */
+  font-size: 15px;
+  color: white;
+  opacity: 1;
+}
+
+
+/* .footer-text-right-align{
+    margin: 0px 0px 0px 0px;
+} */

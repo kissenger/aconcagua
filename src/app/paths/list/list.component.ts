@@ -4,7 +4,6 @@ import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
-import { UpdateListService } from '../../data.service';
 import { Router } from '@angular/router';
 
 @NgModule({
@@ -31,18 +30,11 @@ export class ListComponent implements OnInit, OnDestroy {
   constructor(
     private http: HttpClient,
     private dataService: DataService,
-    private updateListService: UpdateListService,
     private activatedRouter: ActivatedRoute,
     private router: Router,
     ) {}
 
   ngOnInit() {
-
-    // listen for change of list and update if needed
-    this.updateSubs = this.updateListService.hasListChanged.subscribe((hasListChanged) => {
-      // console.log('update list on request');
-      this.updateList(0);  // hasListChanged emits true for auto-select and false for manual
-    });
 
     this.paramsSubs = this.activatedRouter.params.subscribe(params => {
       // console.log('update list on params change, id = ' + params.id);
@@ -97,7 +89,6 @@ export class ListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    this.updateSubs.unsubscribe();
     this.paramsSubs.unsubscribe();
   }
 

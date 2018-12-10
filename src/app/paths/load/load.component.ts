@@ -1,9 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { DataService} from '../../data.service';
+import { DataService } from '../../data.service';
 import { ActivatedRoute } from '@angular/router';
 import { Router } from '@angular/router';
-import { UpdateListService } from '../../data.service';
 
 @Component({
   selector: 'app-load',
@@ -22,8 +21,7 @@ export class LoadComponent implements OnInit {
     private http: HttpClient,
     private dataService: DataService,
     private activatedRouter: ActivatedRoute,
-    private router: Router,
-    private updateListService: UpdateListService
+    private router: Router
     ) {}
 
   ngOnInit() {
@@ -51,7 +49,7 @@ export class LoadComponent implements OnInit {
       this.http.post('http://localhost:3000/loadroutes', fileData)
         .subscribe(incomingData => {
           document.documentElement.style.cursor = 'default';
-          this.dataService.gotNewData.emit(incomingData);
+          this.dataService.fromLoadToMap.emit(incomingData);
 
       });
 
@@ -66,14 +64,13 @@ export class LoadComponent implements OnInit {
 
           if ( this.singleOrBatch === 'batch' ) {
             document.documentElement.style.cursor = 'default';
-            // this.updateListService.hasListChanged.emit(true);
             this.router.navigate(['paths', this.pathType]);
 
           } else
 
           if ( this.singleOrBatch === 'single' ) {
             document.documentElement.style.cursor = 'default';
-            this.dataService.gotNewData.emit(incomingData);
+            this.dataService.fromLoadToMap.emit(incomingData);
           }
       });
 

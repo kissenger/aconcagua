@@ -53,7 +53,7 @@ function gpxToPath(data) {
   var b = data.indexOf("\r",a);     // end of interesting feature
   var i = 0;                          // counter
   var pathType = '';
-  var nameOfPath;                 // "route" or "path"
+  var nameOfPath = '';                 // "route" or "path"
   const maxIters = 100000;             // will only process this number of points
   var latValue, lngValue, eleValue, timeValue;
 
@@ -83,7 +83,6 @@ function gpxToPath(data) {
 
   } while ( i < maxIters )
 
-
   /**
    *  Try to find a name
    */
@@ -92,12 +91,6 @@ function gpxToPath(data) {
   b = lineData.indexOf("</name>");
   if ( a !== -1 && b !== -1 ) {
     nameOfPath = lineData.slice(a + 6, b);
-  } else {
-    if ( pathType === 'route' ) {
-      nameOfPath = 'New Route';
-    } else {
-      nameOfPath = 'New Track ';
-    }
   }
 
   path = new gpsfun.Path(nameOfPath, pathType, []);
@@ -105,7 +98,6 @@ function gpxToPath(data) {
   /**
    *  If this is a track file....
    */
-  // if ( pathType === "track" ) {
 
     ptEnd = b;
 
@@ -157,6 +149,11 @@ function gpxToPath(data) {
       path = gpsfun.simplifyPath(path);
     }
 
+    // Now we have a full path, determine path type and update name
+    if ( nameOfPath === '' ) {
+      path.name = path.category() + ' ' + path.type;
+    }
+
     // console.log(path);
   return path;
 
@@ -193,16 +190,9 @@ function gpxToPath(data) {
 function getSingleGeoJson(path) {
 
   const pathStats = path.stats();
-  var pathName;
-
-  if (path.name == "") {
-    pathName = path.points[0].timeStamp;
-  } else {
-    pathName = path.name
-  }
 
   return {
-    "name": pathName,
+    "name": path.name,
     "bbox": pathStats.boundingBox,
     "type": "Feature",
     "geometry": {
@@ -229,138 +219,6 @@ function getSingleGeoJson(path) {
   };
 
 };
-
-// function getMatchGeoJson(matchArr, type) {
-
-//   // console.log('getGeoJson: ' + type);
-//   let geomArr = [];
-//   if ( type === 'contour') {
-
-//     // get colour palette for contours
-//     const nColours = 9;
-//     colours = contourPalette(nColours);
-
-//     // find min and max number of matches for contour plot
-//     // find the max of (minimum for each two adjacent numbers)
-//     let min = 9999;
-//     let max = -1;
-//     let i = 0;
-
-//     while (i <= matchArr.points.length - 1 ) {
-//       if ( i > 0 ) {
-//         if ( matchArr.points[i].nmatch !== -1 && matchArr.points[i-1].nmatch !== -1 ) {
-//             mintemp = Math.max(matchArr.points[i].nmatch, matchArr.points[i-1].nmatch);
-//             maxtemp = Math.min(matchArr.points[i].nmatch, matchArr.points[i-1].nmatch);
-//             min = mintemp < min ? mintemp : min;
-//             max = maxtemp > max ? maxtemp : max;
-//         }
-//       }
-//       i++;
-//     }
-
-//     shift = (max - min) / (nColours - 1) * 0.5;
-//     i = 0;
-//     let i0 = 0;
-//     let c0;
-//     while ( i < matchArr.points.length ) {
-//       if ( i !== 0 ) {
-
-//         nMatches = Math.min(
-//           matchArr.points[i].nmatch == -1 ? 0 : matchArr.points[i].nmatch,
-//           matchArr.points[i-1].nmatch == -1 ? 0 : matchArr.points[i-1].nmatch
-//         );
-//         // console.log(matchArr.points[i].nmatch + ', ' + nMatches);
-//         cIndex = Math.ceil((nMatches - min + shift) / (max - min + 2*shift) * nColours);
-
-//         // only check on 2nd pass through we we need access to first line's colour (via cIndex)
-//         if ( (i > 1 && cIndex !== c0) || i === matchArr.points.length - 1 ) {
-
-//           colour = colours[c0-1];
-//           i = i === matchArr.points.length - 1 ? i++ : i;
-//           // console.log(matchArr.nmatch[i] + ', ' + matchArr.nmatch[i-1] + ', ' + nMatches + ', ' + cIndex + ', ' + colour)
-
-//           geomArr.push({
-//             'type': 'Feature',
-//             'geometry':
-//               {'coordinates' : matchArr.points.slice(i0, i).map( (p) => p.lnglat),
-//                 'type': 'LineString'},
-//             'properties':
-//               {'color': colour}
-//           });
-
-//           i0 = i - 1;
-
-
-//       } // if (matchArr ...
-//       c0 = cIndex;
-//     } // if (!i ...
-//       i++;
-//     } // while
-
-//   }
-//   else if (type === 'binary') {
-//     //type === 'binary'
-
-//     i = 0;
-//     i0 = 0;
-//     let a, a0, c0;
-
-//     while ( i < matchArr.points.length ) {
-
-//       a = matchArr.points[i].nmatch === 0 ? 0 : 1;
-//       if ( i !== 0 ) {
-
-//         colour = (a === 1 && a0 === 1) ?  '#0000FF' : '#000000';
-//         if ( i > 1 && colour !== c0 || i === matchArr.points.length - 1 ) {
-//           // colour has changed or its the last data point
-
-//           i = ( i === matchArr.points.length - 1 ) ? i++ : i;
-//           geomArr.push({
-//             'type': 'Feature',
-//             'geometry':
-//               {'coordinates' : matchArr.points.slice(i0, i).map( (p) => p.lnglat),
-//                 'type': 'LineString'},
-//             'properties':
-//               {'color': c0}
-//           });
-//           i0 = i-1;
-
-//         }
-//         a0 = a;
-//         c0 = colour;
-
-//       } else {
-//         a0 = a;
-
-//       }// if
-
-//       i++;
-//     } // while
-//   } // else
-//   else if ( type = 'match' ) {
-
-//       geomArr.push({
-//         'type': 'Feature',
-//         'geometry':
-//           {'coordinates': matchArr.points.map( (p) => p.lnglat),
-//             'type': 'LineString'},
-//         'properties':
-//           {'dist':  matchArr.points.map( (p) => p.dist ) }
-//       });
-
-//   }
-
-//   return {
-//     "type": "FeatureCollection",
-//     "plotType": type,
-//     "stats": matchArr.stats,
-//     "bbox": matchArr.bbox,
-//     "features": geomArr.map(x => x)
-//   }
-
-
-// }
-
 
 /**
  *

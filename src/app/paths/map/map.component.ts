@@ -1,12 +1,11 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { MapService } from '../../data.service';
+import { DataService } from '../../data.service';
+import { HttpService } from '../../http.service';
 import { NgControlStatus } from '@angular/forms';
 import { waitForMap } from '@angular/router/src/utils/collection';
 import { Router } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { TryCatchStmt, BoundDirectivePropertyAst } from '@angular/compiler';
-import { HttpClient, JsonpClientBackend } from '@angular/common/http';
-import { DataService} from '../../data.service';
 import { findLast } from '@angular/compiler/src/directive_resolver';
 import { PromiseType } from 'protractor/built/plugins';
 
@@ -36,8 +35,6 @@ export class MapComponent implements OnInit, OnDestroy {
   public contour;
   public match;
 
-
-
   public isReviewPage: Boolean;
   public isMatchPage: Boolean;
   public subsActive: Boolean;
@@ -59,9 +56,8 @@ export class MapComponent implements OnInit, OnDestroy {
   public that = this;
 
   constructor(
-    private http: HttpClient,
+    private httpService: HttpService,
     private dataService: DataService,
-    private mapService: MapService,
     private router: Router,
     private activatedRouter: ActivatedRoute
     ) {
@@ -89,38 +85,36 @@ export class MapComponent implements OnInit, OnDestroy {
         if ( !this.isReviewPage ) {
           // this is NOT review page
 
-          let httpString;
-          httpString = 'http://localhost:3000/get-path-by-id/' + this.pathType + '/' + this.pathID + '/false';
-          console.log('get-path-by-id');
+          if ( !this.subsActive ) {
+            // previous subscription is not open
 
-          this.http
-              .get(httpString)
-              .subscribe( (dataIn) => {
-                this.path = dataIn['geoJson'];
+            this.httpService.getPathById(this.pathType, this.pathID)
+              .subscribe( (result) => {
+                this.path = result['geoJson'];
                 this.loadMap();
                 document.documentElement.style.cursor = 'default';
-              });
+            });
 
-          if ( this.pathType === 'route' ) {
-            // get route match data in the background
-            if ( !this.subsActive ) {
-              console.log('match from db');
-              this.http
-                .get('http://localhost:3000/match-from-db/' + this.pathID)
-                .subscribe( (dataIn) => {
-                  this.processMatchData(dataIn);
-                });
-            }
           }
 
+          if ( this.pathType === 'route' ) {
+            // this is a route
 
+            if ( !this.subsActive ) {
+              this.httpService.matchFromDb(this.pathID)
+                .subscribe( (result) => {
+                  this.processMatchData(result);
+                });
+
+            }
+          }
 
         } else {
         // this is review page
 
-          this.myService = this.dataService.gotNewData.
-            subscribe( (dataIn) => {
-              this.path = dataIn['geoJson'];
+          this.myService = this.dataService.fromLoadToMap.
+            subscribe( (result) => {
+              this.path = result['geoJson'];
               this.pathID = this.path.features[0]._id;
               this.loadMap();
               document.documentElement.style.cursor = 'default';
@@ -139,7 +133,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
     // launch map
 
-    const mapService = this.mapService;
+    // const mapService = this.mapService;
     this.map = new google.maps.Map(document.getElementById('map'), {
       styles: [
         {'elementType': 'geometry', 'stylers': [{ 'color': '#ebe3cd' } ]},
@@ -218,6 +212,21 @@ export class MapComponent implements OnInit, OnDestroy {
 
       });
 
+    /**
+     * DEBUG BLOCK
+     * puts a red circle of radius 20m around each route point
+     * */
+      // this.path.features[0].geometry.coordinates.forEach( (c) => {
+      //   const circle = new google.maps.Circle({
+      //     strokeColor: '#FF0000',
+      //     strokeOpacity: 0.8,
+      //     strokeWeight: 2,
+      //     fillOpacity: 0,
+      //     map: this.map,
+      //     center: {'lat': c[1], 'lng': c[0]},
+      //     radius: 20
+      //   });
+      // });
 
     } else {
 
@@ -236,7 +245,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
     // emit data to data component
     if ( this.pathID !== '0' ) {
-      mapService.newMapData.emit(
+      this.dataService.fromMapToData.emit(
         this.getDataPackage(this.path.features[0])
       );
     }
@@ -630,7 +639,6 @@ export class MapComponent implements OnInit, OnDestroy {
 
   pathLoad() {
     console.log('click load');
-    console.log(this);
     this.router.navigate(['load-paths', this.pathType, 'single']);
   }
 
@@ -640,10 +648,8 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   pathDelete() {
-    console.log('click delete');
-    this.http.get('http://localhost:3000/delete-path/' + this.pathType + '/' + this.pathID)
+    this.httpService.deletePath(this.pathType, this.pathID)
       .subscribe( () => {
-        // that.updateListService.hasListChanged.emit(true);
         this.router.navigate(['paths', this.pathType]);
       });
   }
@@ -729,26 +735,20 @@ export class MapComponent implements OnInit, OnDestroy {
 
     if ( this.pathType === 'route' ) {
       // Return changed values to backend and set saved flag to true
-      // console.log('match-from-load');
       this.subsActive = true;
       this.setInputDisabled(<HTMLElement>document.getElementById('Tracks'));
       this.setInputDisabled(<HTMLElement>document.getElementById('Binary'));
       this.setInputDisabled(<HTMLElement>document.getElementById('Contour'));
-      this.http
-        .get('http://localhost:3000/match-from-load/' + this.pathID)
+      this.httpService.matchFromLoad(this.pathID)
         .subscribe( (dataIn) => {
           this.processMatchData(dataIn);
       });
     }
 
-    // console.log('save-path ' + this.pathType + ', ' + this.pathID);
-    this.http.post('http://localhost:3000/save-path/' + this.pathType + '/' + this.pathID, payload)
+    this.httpService.savePath(this.pathType, this.pathID, payload)
       .subscribe( () => {
         this.router.navigate(['paths', this.pathType, this.pathID]);
       });
-
-    // using update service means list is refreshed by there is a double take when the save button is pressed
-    // this.router.navigate(['routes', this.pathType, this.pathID]);
 
   }
 
@@ -776,7 +776,7 @@ processMatchData(d) {
 
   // emit data to data component
   if ( this.pathID !== '0' ) {
-    this.mapService.newMapData.emit({
+    this.dataService.fromMapToData.emit({
       'stats': this.binary.stats,
     });
   }

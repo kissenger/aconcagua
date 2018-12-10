@@ -35,10 +35,59 @@ class Point {
  *   stats: outputs hash array with required path statistics eg path distance
  */
 class Path {
+
   constructor(name, type, points) {
     this.name = name;
     this.type = type;
     this.points = points;
+  }
+
+  category() {
+
+    const matchDistance = 25;  // in m, if points are this close then consider as coincident
+    const buff = 50;           // number of points ahead to skip in matching algorithm
+    const pcThreshUpper = 90;  // % above which to consider at out and back
+    const pcThreshLower = 10;  // % below which to consider as one way or loop
+
+    let nm = 0, np = this.points.length;
+    let isEndsAtStart = false;
+    let category = '';
+
+    // loop through points and match each point against remaining points in path; count matches
+    for ( let i = 0; i < np - buff; i++ ) {
+      for ( let j = i + buff; j < np; j++ ) {
+        const d = p2p(this.points[i].latLng, this.points[j].latLng);
+        if ( d < matchDistance ) {
+          nm++;
+          break;
+        }
+      }
+    }
+
+    // determine whether 1st and last points are within tolerance
+    const d = p2p(this.points[0].latLng, this.points[np - 1].latLng);
+    if ( d < matchDistance * 10 ) isEndsAtStart = true;
+
+    // caculate proportion of points that are matched
+    // factor of 2 accounts for the fact that only a max 1/2 of points can be matched with algorithm
+    const pcShared = nm / np * 200;
+
+    // determine path category
+    if ( isEndsAtStart ) {
+
+      if ( pcShared > pcThreshUpper ) category = 'Out and back'
+      else if (pcShared < pcThreshLower ) category = 'Circular'
+      else category = 'Hybrid'
+
+    } else {
+
+      if ( pcShared > pcThreshUpper ) category = 'Out and back'
+      else if (pcShared < pcThreshLower ) category = 'One way'
+      else category = 'Hybrid'
+
+    }
+
+    return category;
   }
 
   // Stats method on the Path class

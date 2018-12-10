@@ -1,36 +1,30 @@
-// mongo password: p6f8IS4aOGXQcKJN
+// Libraries and stuff
 const express = require('express');
-const multer = require('multer');
-const filefun = require('./filefun.js');
-const gpsfun = require('./gpsfun.js');
-const bodyParser = require('body-parser');
 const app = express();
-const mongoose = require('mongoose');
-const MongoPath = require('./models/mongo');
+const multer = require('multer');
+const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+
+// Local functions
+const filefun = require('./filefun.js');
 const { Match } = require('./class-match.js');
-// require('mongoose').set('debug', true);
 
+// Mongoose setup ... mongo password: p6f8IS4aOGXQcKJN
+const mongoose = require('mongoose');
+const MongoPath = require('./models/path-models');
+const MongoUsers = require('./models/user-models');
 
-// cmd window mongo launch:
-// mongo mongodb+srv://root:p6f8IS4aOGXQcKJN@cluster0-gplhv.mongodb.net/test?retryWrites=true
-mongoose.connect('mongodb+srv://root:p6f8IS4aOGXQcKJN@cluster0-gplhv.mongodb.net/test?retryWrites=true')
-  .then(() => {
-    console.log('Connected to database');
-  })
-  .catch(() => {
-    console.log('Connection to database failed');
-  });
+/**
+ *
+ * setup
+ *
+ */
 
 app.use(bodyParser.json());
-// app.post('', bodyParser.raw(), function (req, res) {
-
-// } )
-
-// gst - to allow serving a local file, this does so on hhtp://localhost:3000/***.kml */
 app.use(express.static('backend/files'));
 
-// This sets up Cross Origin Resource Sharing (CORS )
-// Sets up browser to accept data from backend server
+// Set up Cross Origin Resource Sharing (CORS )
 app.use((req, res, next) => {
   // inject a header into the response
   res.setHeader(
@@ -39,15 +33,122 @@ app.use((req, res, next) => {
     );
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Origin, X-Request-With, Content-Type, Accept"
+    "Origin, X-Request-With, Content-Type, Accept, Authorization"
     );
   res.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, PATCH, DELETE, OPTIONS"
     );
-  //move on to the next middleware
   next();
 });
+
+/**
+ *
+ * mongo
+ *
+ */
+
+mongoose.connect('mongodb+srv://root:p6f8IS4aOGXQcKJN@cluster0-gplhv.mongodb.net/test?retryWrites=true')
+  .then(() => {
+    console.log('Connected to database');
+  })
+  .catch(() => {
+    console.log('Connection to database failed');
+  });
+
+/**
+ *
+ * user management
+ *
+ */
+
+function verifyToken(req, res, next) {
+
+  if (!req.headers.authorization) {
+    return res.status(401).send('Unauthorised request');
+  }
+
+  const token = req.headers.authorization;
+  if ( token === 'null' ) {
+    return res.status(401).send('Unauthorised request');
+  }
+
+  const payload = jwt.verify(token, 'AppleCrumbleAndCustard');
+  if ( !payload ) {
+    return res.status(401).send('Unauthorised request');
+  }
+
+  req.userId = payload.subject;
+  next();
+
+}
+
+app.post('/register', (req, res) => {
+// take incoming user data in the form {email, password}, hash password,
+// save to db, get json token and return to front end
+
+  const jwtSecretKey = 'AppleCrumbleAndCustard';
+  const saltRounds = 10;
+
+  // confirm that email address does not exist in db
+  MongoUsers.Users
+    .findOne( {email: req.body.email}, {'_id': 1} )
+    .then( (user) => {
+
+      if ( user ) {
+        // email already exists in db
+        res.status(200).send('Email address is already registered');
+
+      } else {
+        // email is new
+        bcrypt.hash(req.body.password, saltRounds).then( (hash) => {
+
+          const userData = req.body;
+          req.body['hash'] = hash;
+
+          MongoUsers.Users.create(userData).then( (regUser) => {
+            const token = jwt.sign( {subject: regUser._id}, jwtSecretKey);
+            res.status(200).send({token});
+          })
+        })
+
+      }
+
+  })
+
+});
+
+
+
+app.post('/login', (req, res) => {
+
+  const jwtSecretKey = 'AppleCrumbleAndCustard';
+
+  // check that email address exists and return data in variable user
+  MongoUsers.Users.findOne( {email: req.body.email}, {'hash': 1} ).then( (user) => {
+
+    if (!user) {
+      // user does not exist
+      res.status(401).send('Email address is not registered');
+
+    } else {
+      // user exists
+      bcrypt.compare(req.body.password, user.hash).then( (result) => {
+
+        if (result) {
+          // password is ok
+          const token = jwt.sign({ subject: user._id }, jwtSecretKey);
+          res.status(200).send({token});
+        } else {
+          // incorrect password
+          res.status(401).send('Password does not match registered email');
+        }
+
+      })
+    }
+  })
+});
+
 
 
 /**
@@ -55,7 +156,6 @@ app.use((req, res, next) => {
  * new file data is submitted from the front end
  *
  */
-
 
 var storageOptions = multer.memoryStorage()
 
@@ -66,24 +166,8 @@ var upload = multer({
   }
 });
 
-// async function updateMatches (ids) {
 
-//   for (var i = 0; i < ids.length; i++) { // note that forEach does not work with await
-
-//     let x = await new Promise( resolve => {
-//       matchNewTrack(ids[i]).resolve();
-//       // if ( matchNewTrack(ids[i]) === true ) {
-//       //   console.log('resolved');
-//       //   resolve();
-//       // }
-//     });
-//     console.log('**************' + x + ', ' + ids[i]);
-
-//   }
-
-// }
-
-app.post('/loadtracks/:singleOrBatch', upload.array('filename', 500), (req, res) => {
+app.post('/loadtracks/:singleOrBatch', verifyToken, upload.array('filename', 500), (req, res) => {
 
   // read data into buffer and interprete gpx
   const gpxBuffer = req.files.map(a => a.buffer.toString());
@@ -113,58 +197,7 @@ app.post('/loadtracks/:singleOrBatch', upload.array('filename', 500), (req, res)
           );
         }
 
-        // matchNewTrack(trackIds[0]).then( () => {
-        //   console.log('hurrah');
-        //   matchNewTrack(trackIds[1]).then( () => {
-        //     console.log('hurrah2');
-        //   });
-        // });
       });
-
-      // try {
-      //   updateMatches(trackIds);
-      // } catch (error) {
-      //   console.log(error);
-      // }
-
-
-
-        // promiseChain = Promise.resolve()
-        // for (let i = 0; i < trackIds.length; i++) {
-        //   console.log(i);
-        //   promiseChain = promiseChain.then( () => {
-        //     return new Promise( resolve => {
-        //       if ( matchNewTrack(trackIds[i]) === true ) {
-        //         resolve();
-        //       }
-        //     })
-        //   });
-        // }
-
-
-      // id0 = new Promise ( (resolve, rej) => {
-      //     if (matchNewTrack(id)) resolve();
-      // })
-
-      // id0.then( () => {
-      //   console.log('******finished*******');
-        // id1 = new Promise ( (resolve, rej) => {
-        //   if ( matchNewTrack(trackIds[1]) ) {
-        //     resolve();
-        //   }
-        // })
-        // id1.then( () => {
-        //   console.log('******finished*******');
-        // })
-      // })
-
-      //   // trackIds.forEach( (id) => {
-      //   //   matchNewTrack(id);
-      //   // });
-
-
-
-
 
   } else {
     // single upload
@@ -181,7 +214,7 @@ app.post('/loadtracks/:singleOrBatch', upload.array('filename', 500), (req, res)
 
 });
 
-app.post('/loadroutes', upload.single('filename'), (req, res) => {
+app.post('/loadroutes', verifyToken, upload.single('filename'), (req, res) => {
 
   // Read file data & convert to geojson format
   const pathAsArray = filefun.gpxToPath(req.file.buffer.toString());
@@ -209,7 +242,7 @@ app.post('/loadroutes', upload.single('filename'), (req, res) => {
  *  Save a path to database
  *  id of path is provided
  */
-app.post('/save-path/:type/:id', (req, res) => {
+app.post('/save-path/:type/:id', verifyToken, (req, res) => {
 
   let pathModel;
   let condQ = {}, filtQ = {};
@@ -241,7 +274,7 @@ app.post('/save-path/:type/:id', (req, res) => {
  *  Delete a path from database
  *  id of path is provided
  */
-app.get('/delete-path/:type/:id', (req, res) => {
+app.get('/delete-path/:type/:id', verifyToken, (req, res) => {
 
   let pathModel;
   let condQ = {}, filtQ = {};
@@ -268,7 +301,7 @@ app.get('/delete-path/:type/:id', (req, res) => {
 /**
  *  Retrieve a list of paths from database
  */
-app.get('/get-paths-list/:type', (req, res) => {
+app.get('/get-paths-list/:type', verifyToken, (req, res) => {
 
   let pathModel;
   let condQ = {}, filtQ = {}, sortQ = {};
@@ -303,7 +336,7 @@ app.get('/get-paths-list/:type', (req, res) => {
  *  Retrieve a single path from database
  *  id of required path is supplied
  */
-app.get('/get-path-by-id/:type/:id/:idOnly', (req, res) => {
+app.get('/get-path-by-id/:type/:id/:idOnly', verifyToken, (req, res) => {
 
   let pathModel;
 
@@ -339,7 +372,7 @@ app.get('/get-path-by-id/:type/:id/:idOnly', (req, res) => {
  *    Route: Time route was uploaded
  *    Track: Time track was recorded
  */
-app.get('/get-path-auto/:type', (req, res) => {
+app.get('/get-path-auto/:type', verifyToken, (req, res) => {
 
   let pathModel;
   let condQ = {}, sortQ = {};
@@ -380,7 +413,7 @@ app.get('/flush', (req, res) => {
 /**
  *  Perform route matching on newly uploaded route
  */
-app.get('/match-from-load/:id', (req, res) => {
+app.get('/match-from-load/:id', verifyToken, (req, res) => {
 
   const routeId = req.params.id;
 
@@ -430,7 +463,7 @@ app.get('/match-from-load/:id', (req, res) => {
 /**
  *  Retrieve route matching data from previously matched route
  */
-app.get('/match-from-db/:id', (req, res) => {
+app.get('/match-from-db/:id', verifyToken, (req, res) => {
 
   const routeId = req.params.id;
 
@@ -596,185 +629,5 @@ function matchNewTrack(trkId) {
 
 }
 
-
-// function getMatchArrays(rtes, trks, mtchs) {
-
-//   // checks all required data is present, then calls matchLogic
-//   // rtes and trks supplied as multiGeoJson
-//   // mtches is an array of match objects, ie mtchs = [{},{},{}]
-//   // expectations:
-//   //  1a) if n routes > 1 then n tracks = 1
-//   //  1b) if n tracks > 1 then n routes = 1
-//   //  i.e. n routes and n tracks cannot both be greater than 1
-//   //  2) if optional argument matches is supplied, n routes = n matches
-
-//   let matches = []; // array of match objects
-
-//   // apply expectations on incoming data
-//   if ( rtes.features.length > 1 && trks.features.length > 1 ) {
-//     console.error( 'Error from getMatchArray: number of routes > 1 AND number of tracks > 1');
-//     return
-//   } else if ( mtchs ) {
-//     if ( rtes.features.length !== mtchs.length ) {
-//       console.error( 'Error from getMatchArray: number of routes <> number of matches');
-//       return
-//     }
-//   }
-
-//   // loop through each provided route
-//   rtes.features.forEach( (rte, i) => {
-//     if ( !mtchs ) {
-//       // matches.push(new Match(rte._id, rte.bbox, rte.geometry.coordinates));
-//       matches.push(new Match().fromNew(rte._id, rte.bbox, rte.geometry.coordinates));
-//     } else {
-//       // matches.push(mtchs[i]);
-//       matches.push(new Match().fromExisting(mtchs[i]));
-//     }
-
-//   })
-
-//   console.log(matches);
-//   matchLogic(rtes, trks, matches);
-
-
-// };
-
-// class Data extends Match {
-//   constructor(rtes, trks) {
-//     data = matchLogic(rtes, trks, mtchs);
-//     this.trks = data.trks;
-//     this.dist = data.dist;
-//     this.trksList = data.trksList;
-//     this.getStats();
-//   }
-
-//   addTrack(trkId){
-//     this.matchLogic();
-//     this.getStats();
-//   }
-
-//   removeTrack(trkId) {
-
-//     this.trksList.splice(this.trksList.indexOf(trkId), 1)
-//     this.lnglat.forEach ( (p) => {
-//       index = p.trks.indexOf(trkId);
-//       if ( index !== -1 ) {
-//         p.trks.splice(index, 1);
-//         p.dist.splice(index, 1);
-//         p.nmatch--;
-//       }
-//     })
-//     this.getStats();
-
-//   }
-
-//   getStats(){
-
-//   }
-// }
-
-
-
-// function matchLogic(r, t, m) {
-
-  /**
-   *  Route matching algorithm
-   *
-   * Notes from previous ruby implmentation
-    # 1) for each route point check against all bounding boxes as you go, thereby removing outer loop ... quicker?
-    # 2) optimise 'point skipping' logic
-    # 3) implement 'point skipping' on route points
-    # 4) better selection of tracks from mysql database
-    # 5) better utilisation of mysql - return only sections of route of interest??
-    # 6) employ route simplification?
-   *
-   * Implemntation approach
-   * ======================
-   * For each provided route
-   *   For each provided track
-   *     Loop through route points, for each route point
-   *       Check if route point is within bounding box of current selected track
-   *         If it is, then loop through all the points of the track to find point closest to current route point
-   *         If it isn't, then just carry on
-   *       End of loop
-   *     End of loop
-   *   End of loop
-   * End of loop
-   */
-
-//   const fudgeFactor = 1.0001;
-//   const matchTolerance = 20;  // in metres
-//   let ms = [];
-
-//   console.log('start match loops...');
-
-//   // loop through each route
-//   r.features.forEach( (rte) => {
-
-//     // loop through each track
-//     t.features.forEach( (trk) => {
-
-//       // find bounding box coords for current track
-//       minLng = trk.bbox[0] < 0 ? trk.bbox[0] * fudgeFactor : trk.bbox[0] / fudgeFactor;
-//       minLat = trk.bbox[1] < 0 ? trk.bbox[1] * fudgeFactor : trk.bbox[1] / fudgeFactor;
-//       maxLng = trk.bbox[2] < 0 ? trk.bbox[2] / fudgeFactor : trk.bbox[2] * fudgeFactor;
-//       maxLat = trk.bbox[3] < 0 ? trk.bbox[3] / fudgeFactor : trk.bbox[3] * fudgeFactor;
-
-//       // loop through each route point
-//       rte.geometry.coordinates.forEach( (rtePt, iRtePt) => {
-
-//         // check if current route point is within bounding box of current track
-//         if ( rtePt[0] < maxLng && rtePt[0] > minLng && rtePt[1] < maxLat && rtePt[1] > minLat ) {
-
-//           // if route point is within tracks bounding box, loop trhough track to find matching point(s)
-//           trk.geometry.coordinates.forEach( (trkPt, itrkPt) => {
-
-//             // get distance from route point and track point
-//             dist = gpsfun.p2p(rtePt, trkPt);
-
-//             // if dist < tol then update matched arrays
-//             if ( dist < matchTolerance ) {
-//               const index = match.points[iRtePt].trks.indexOf(trk._id)
-
-//               if ( index === -1 ) {
-//                 // if track is not found on current point, push it to array
-//                 m.points[iRtePt].trks.push(trk._id);
-//                 m.points[iRtePt].dist.push(dist);
-//                 m.points[iRtePt].nmatch++;
-//               } else {
-//                 // otherwise update distance in array but dont record another match (nmatch) or trkId
-//                 if ( dist < match.points[iRtePt].dist[index] ) {
-//                   m.points[iRtePt].dist[index] = dist;
-//                 }
-//               }
-
-//               // if track is not found in overall tracks list, push it
-//               if ( match.trksList.indexOf(trk._id) === -1 ) {
-//                 m.trksList.push(trk._id);
-//               }
-//             } // if ( dist ...
-
-//           }) //trk.forEach
-
-//         } // if ( rtePt[0] ...
-
-//       }) // rteCoords.forEach
-
-//     }) // t.forEach
-
-//     console.log('finished match loops.')
-
-//     m.stats = getMatchStats(m);
-//     ms.push(m);
-
-//   }) // rtes.forEach
-
-//   return ms;
-
-// }
-
-// function getMatchStats(m) {
-
-// }
 
 module.exports = app;

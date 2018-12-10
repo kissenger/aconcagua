@@ -2,13 +2,16 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
-import { DataService, MapService, UpdateListService } from './data.service';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AppRoutingModule } from './app-routing.module';
+import { AuthGuard } from './auth.guard';
+import { AuthService } from './auth.service';
+import { DataService } from './data.service';
+import { HttpService } from './http.service';
+import { TokenInterceptorService } from './token-interceptor.service';
 
 // Local imports: components
 import { AppComponent } from './app.component';
-import { HowItWorksComponent } from './how-it-works/how-it-works.component';
 import { AboutComponent } from './about/about.component';
 import { HomeComponent } from './home/home.component';
 import { FooterComponent } from './footer/footer.component';
@@ -19,13 +22,13 @@ import { CreateComponent } from './paths/create/create.component';
 import { MapComponent } from './paths/map/map.component';
 import { DataComponent } from './paths/data/data.component';
 import { ListComponent } from './paths/list/list.component';
-
+import { LoginComponent } from './login/login.component';
+import { RegisterComponent } from './register/register.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     HeaderComponent,
-    HowItWorksComponent,
     AboutComponent,
     HomeComponent,
     FooterComponent,
@@ -35,6 +38,8 @@ import { ListComponent } from './paths/list/list.component';
     LoadComponent,
     ListComponent,
     CreateComponent,
+    LoginComponent,
+    RegisterComponent
   ],
   imports: [
     BrowserModule,
@@ -44,8 +49,14 @@ import { ListComponent } from './paths/list/list.component';
   ],
   providers: [
     DataService,
-    MapService,
-    UpdateListService
+    AuthService,
+    HttpService,
+    AuthGuard,
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: TokenInterceptorService,
+      multi: true
+    }
   ],
   bootstrap: [AppComponent],
 })

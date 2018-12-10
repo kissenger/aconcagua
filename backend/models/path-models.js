@@ -26,7 +26,7 @@ const pathSchema = mongoose.Schema({
   }
 });
 
-matchSchema = mongoose.Schema({
+const matchSchema = mongoose.Schema({
   routeId: {type: String},
   bbox: {type: [Number]},
   trksList: {type: [String]},
@@ -38,21 +38,10 @@ matchSchema = mongoose.Schema({
 });
 
 
-// match = {
-//   'routeId': rte._id,
-//   'bbox': rte.bbox,
-//   'trksList': [],
-//   'points': rte.geometry.coordinates.map( (p) => {
-//          return { 'lnglat': p ,
-//                   'trks':   [] ,
-//                   'dist':   [] ,
-//                   'nmatch': 0 }
-//     })
-// }
+const Tracks = mongoose.model('tracks', pathSchema);
+const Routes = mongoose.model('routes', pathSchema);
+const Match = mongoose.model('match', matchSchema);
 
-var Tracks = mongoose.model('tracks', pathSchema);
-var Routes = mongoose.model('routes', pathSchema);
-var Match = mongoose.model('match', matchSchema);
 
 module.exports = {
   Tracks: Tracks,

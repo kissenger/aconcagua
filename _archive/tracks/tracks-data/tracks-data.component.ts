@@ -51,12 +51,7 @@ export class TracksDataComponent implements OnInit {
 
   ngOnInit() {
 
-    // this.dataService.gotNewData.
-    //   subscribe((pathAsGeoJson) => {
-    // });
-
-    this.mapService.newMapData.
-    subscribe((dataFromMap) => {
+    this.mapService.newMapData.subscribe((dataFromMap) => {
       if ('save' in dataFromMap) {
         this.openForm();
       } else if ('empty' in dataFromMap) {

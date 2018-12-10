@@ -4,22 +4,23 @@
 import { NgModule} from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { HomeComponent } from './home/home.component';
-import { HowItWorksComponent } from './how-it-works/how-it-works.component';
-import { AboutComponent } from './about/about.component';
 import { PathsComponent } from './paths/paths.component';
 import { LoadComponent } from './paths/load/load.component';
 import { CreateComponent } from './paths/create/create.component';
+import { LoginComponent } from './login/login.component';
+import { RegisterComponent } from './register/register.component';
+import { AuthGuard } from './auth.guard';
 
 // **named routes must be named different to any back-end routes defined
 const appRoutes: Routes = [
   { path: '', component: HomeComponent},
-  { path: 'how-it-works', component: HowItWorksComponent},
-  { path: 'about', component: AboutComponent},
-  { path: 'paths/:type', component: PathsComponent},
-  { path: 'paths/:type/:id', component: PathsComponent},
-  { path: 'paths/:type/:id/:match', component: PathsComponent},
-  { path: 'load-paths/:type/:singleOrBatch', component: LoadComponent},
-  { path: 'create-route/:type', component: CreateComponent},
+  { path: 'paths/:type', component: PathsComponent, canActivate: [AuthGuard]},
+  { path: 'paths/:type/:id', component: PathsComponent, canActivate: [AuthGuard]},
+  { path: 'paths/:type/:id/:match', component: PathsComponent, canActivate: [AuthGuard]},
+  { path: 'load-paths/:type/:singleOrBatch', component: LoadComponent, canActivate: [AuthGuard]},
+  { path: 'create-route/:type', component: CreateComponent, canActivate: [AuthGuard]},
+  { path: 'register', component: RegisterComponent},
+  { path: 'login', component: LoginComponent},
 ];
 
 @NgModule({

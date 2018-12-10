@@ -31,6 +31,31 @@ class Match {
    */
   run(rte, trks) {
 
+  /**
+   *  Route matching algorithm
+   *
+   * Notes from previous ruby implmentation
+    # 1) for each route point check against all bounding boxes as you go, thereby removing outer loop ... quicker?
+    # 2) optimise 'point skipping' logic
+    # 3) implement 'point skipping' on route points
+    # 4) better selection of tracks from mysql database
+    # 5) better utilisation of mysql - return only sections of route of interest??
+    # 6) employ route simplification?
+   *
+   * Implemntation approach
+   * ======================
+   * For each provided route
+   *   For each provided track
+   *     Loop through route points, for each route point
+   *       Check if route point is within bounding box of current selected track
+   *         If it is, then loop through all the points of the track to find point closest to current route point
+   *         If it isn't, then just carry on
+   *       End of loop
+   *     End of loop
+   *   End of loop
+   * End of loop
+   */
+
     console.log('Match.run()...')
     // check supplied rte is consistent with routeId on Match class
     if ( typeof this.lngLat === 'undefined' ) {

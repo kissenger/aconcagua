@@ -13,15 +13,17 @@
             <span class = "icon-bar"></span>
             <span class = "icon-bar"></span>
          </button>
-          <a class="navbar-brand" href="#">trailsy
+          <a class="navbar-brand" href="#">trailscape
           </a>
         </div> <!-- navbar-header-->
 
         <div class = "collapse navbar-collapse" id = "navbar-collapse">
           <ul class="nav navbar-nav navbar-right">
-            <li><a [routerLink]="['/paths', 'route']" class="navbar-text-color">Routes</a> </li>
-            <li><a [routerLink]="['/paths', 'track']" class="navbar-text-color">Tracks</a></li>
-            <li><a routerLink="about" class=" navbar-text-color">About</a></li>
+            <li><a *ngIf='authService.loggedIn()' [routerLink]="['/paths', 'route']" class="navbar-text-color">Routes</a> </li>
+            <li><a *ngIf='authService.loggedIn()' [routerLink]="['/paths', 'track']" class="navbar-text-color">Tracks</a></li>
+            <li><a *ngIf='!authService.loggedIn()' [routerLink]="['/register']" class="navbar-text-color">Register</a></li>
+            <li><a *ngIf='!authService.loggedIn()' [routerLink]="['/login']" class="navbar-text-color">Login</a></li>
+            <li><a *ngIf='authService.loggedIn()' [routerLink]="['']" class="navbar-text-color" (click)='authService.logoutUser()'>Logout</a></li>
           </ul>
         </div> <!-- collapse navbar-collapse-->
 
