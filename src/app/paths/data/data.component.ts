@@ -17,63 +17,43 @@ import { FormsModule } from '@angular/forms';
 
 export class DataComponent implements OnInit, OnDestroy {
 
-  public myService;
-  public pathName = '';
-  public pathDescription = '';
-  public totalDistance = 0;
-  public totalAscent = 0;
-  public totalDescent = 0;
-  public maxDistBtwnTwoPoints = 0;
-  public aveDistBtwnTwoPoints = 0;
-  public matchDistance = '';
+  public tabName  = 'left';
 
   constructor(
-    private dataService: DataService
     ) {}
-
-//   openForm() {
-//     document.getElementById('myForm').style.display = 'block';
-//     // console.log('click');
-//   }
-
-//   onCancel() {
-//       document.getElementById('myForm').style.display = 'none';
-//   }
-
-//   onSave() {
-//     document.getElementById('myForm').style.display = 'none';
-// }
 
   ngOnInit() {
 
-    this.myService = this.dataService.fromMapToData.
-      subscribe( (dataFromMap) => {
-        console.log(dataFromMap);
 
-        if ( 'matchDistance' in dataFromMap.stats ) {
-          this.matchDistance          = dataFromMap.stats.matchDistance;
-        } else {
-          this.pathName               = dataFromMap.name;
-          this.pathDescription        = dataFromMap.description;
-          this.totalDistance          = dataFromMap.stats.totalDistance;
-          this.totalAscent            = dataFromMap.stats.totalAscent;
-          this.totalDescent           = dataFromMap.stats.totalDescent;
-          this.maxDistBtwnTwoPoints   = dataFromMap.stats.maxDistBtwnTwoPoints;
-          this.aveDistBtwnTwoPoints   = dataFromMap.stats.aveDistBtwnTwoPoints;
-        }
-
-
-      }); // subscribe
 
   } // ngOnInit
 
-/**
- *CLEAR UP
- */
+  menuClick(item) {
+
+    this.tabName = item;
+    const leftDiv = document.getElementById('left');
+    const rightDiv = document.getElementById('right');
+
+    if ( item === 'left' ) {
+      // leftDiv.style.borderBottom = '0px';
+      // leftDiv.style.borderRight = 'transparent 1px solid';
+      // rightDiv.style.borderBottom = '#000000 1px solid';
+      // rightDiv.style.borderLeft = '#000000 1px solid';
+      leftDiv.style.backgroundColor = '#E9E2CB';
+      rightDiv.style.backgroundColor = '#FFFFFF';
+    } else if ( item === 'right' ) {
+      // leftDiv.style.borderBottom = '#000000 1px solid';
+      // leftDiv.style.borderRight = '#000000 1px solid';
+      // rightDiv.style.borderBottom = '0px';
+      // rightDiv.style.borderLeft = 'transparent 1px solid';
+      leftDiv.style.backgroundColor = '#FFFFFF';
+      rightDiv.style.backgroundColor = '#E9E2CB';
+    }
+  }
+
 
   ngOnDestroy() {
-    console.log('unsubscribe from mapService');
-    this.myService.unsubscribe();
+
   }
 
 }

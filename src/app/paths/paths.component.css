@@ -2,7 +2,7 @@
   font-size: 15px;
   color: black;
   opacity: 1.0;
-  border: 2px red dotted;
+  border: 0px red dotted;
   height: 100%;
 }
 
@@ -12,15 +12,16 @@
   width: 67%;
 }
 
-.routes-data {
+.data {
   margin: 0px 30px 0px 0px;
   background-color: white;
+  border: 0px dashed orange;
   float: right;
   width: 27%;
   height: 45%;
   /* padding: 5px; */
 }
-
+/*
 .routes-list {
   margin: 15px 30px 0px 0px;
   background-color: white;
@@ -29,4 +30,4 @@
   height: 300px;
   overflow: auto;
   /* padding: 5px; */
-}
+/* } */

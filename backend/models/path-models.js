@@ -2,9 +2,11 @@ const mongoose = require('mongoose');
 
 const pathSchema = mongoose.Schema({
   type: {type: String},
-  isSaved: {type: Boolean, required: true, default: false},
+  userId: {type: String, required: true},
+  isSaved: {type: Boolean, default: false},
   creationDate: {type: Date, default: Date.now},
   name: {type: String, required: true},
+  category: {type: String},
   description: {type: String},
   bbox: {type: [Number]},
   geometry: {
@@ -12,39 +14,55 @@ const pathSchema = mongoose.Schema({
     coordinates: {type: [[Number]], required: true}
   },
   properties: {
-    timeArray: {type: [String]},
-    startTime: {type: Date},
-    color: {type: String},
-    name: {type: String},
-    pathStats: {
-      totalDistance: {type: Number},
-      totalAscent: {type: Number},
-      totalDescent: {type: Number},
-      maxDistBtwnTwoPoints: {type: Number},
-      aveDistBtwnTwoPoints: {type: Number}
+    params: {
+      time: {type: [Number]},
+      heartRate: {type: [Number]},
+      cadence: {type: [Number]},
+      elevation: {type: [Number]}
+    },
+    stats: {
+      // color: {type: String},
+      // name: {type: String},
+      startTime: {type: String},
+      duration: {type: Number},
+      distance: {type: Number},
+      pace: {type: Number},
+      ascent: {type: Number},
+      descent: {type: Number},
+      p2p: {
+        max: {type: Number},
+        ave: {type: Number}
+      },
+      movingTime: {type: Number},
+      movingDist: {type: Number},
+      movingPace: {type: Number},
+      hills: {type: [
+        { dHeight: {type: Number},
+          dDist: {type: Number},
+          dTime: {type: Number},
+          pace:  {type: Number},
+          ascRate: {type: Number},
+          gradient: {
+            max: {type: Number},
+            ave: {type: Number}
+          }
+        }
+      ]},
+      kmSplits: {type: [[Number]]},
+      mileSplits: {type: [[Number]]}
     }
   }
 });
 
-const matchSchema = mongoose.Schema({
-  routeId: {type: String},
-  bbox: {type: [Number]},
-  trksList: {type: [String]},
-  matchDistance: {type: Number},
-  nmatch: {type: [Number]},
-  lngLat: {type: [[Number]]},
-  tracks: {type: [[String]]},
-  dist: {type: [[]], default: undefined} // for some reason defining type Number throws an intermittent error
-});
+
+
 
 
 const Tracks = mongoose.model('tracks', pathSchema);
 const Routes = mongoose.model('routes', pathSchema);
-const Match = mongoose.model('match', matchSchema);
 
 
 module.exports = {
   Tracks: Tracks,
-  Routes: Routes,
-  Match: Match
+  Routes: Routes
 };

@@ -2,11 +2,10 @@ body, html {
     height: 100%;
 }
 
-.background {
-    /* background: green; */
+/* .background {
     background-image: url("./assets/images/test2.jpg");
     height: 100%;
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
-}
+} */

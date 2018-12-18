@@ -10,7 +10,6 @@ export class TokenInterceptorService implements HttpInterceptor {
   ) { }
 
   intercept(req, next) {
-    console.log(req);
     const token = this.authService.getToken();
     if ( token ) {
       const tokenizedReq = req.clone({
@@ -18,10 +17,8 @@ export class TokenInterceptorService implements HttpInterceptor {
           Authorization: this.authService.getToken()
         }
       });
-      console.log('there');
       return next.handle(tokenizedReq);
     } else {
-      console.log('nowhere');
       return next.handle(req);
     }
   }

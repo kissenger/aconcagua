@@ -1,4 +1,6 @@
-const gpsfun = require('./gpsfun.js');
+const contourPalette = require('./utils.js').contourPalette;
+const p2p = require('./geo.js').p2p;
+const Point = require('./_Point.js').Point;
 
 class Match {
   constructor(matchObject) {
@@ -14,6 +16,7 @@ class Match {
     } else {
 
       // otherwise use data supplied
+      this.userId = matchObject.userId;
       this.routeId = matchObject.routeId;
       this.bbox = matchObject.bbox;
       this.lngLat = matchObject.lngLat;
@@ -60,6 +63,7 @@ class Match {
     // check supplied rte is consistent with routeId on Match class
     if ( typeof this.lngLat === 'undefined' ) {
       // this is a new match, so check is not relevant: populate class data
+      this.userId = rte.features[0].userId;
       this.lngLat = rte.features[0].geometry.coordinates;
       this.bbox = rte.bbox;
       this.routeId = rte.features[0]._id;
@@ -85,16 +89,20 @@ class Match {
       const maxLat = trk.bbox[3] < 0 ? trk.bbox[3] / this.fudgeFactor : trk.bbox[3] * this.fudgeFactor;
 
       // loop through each route point
-      this.lngLat.forEach( (rtePt, iRtePt) => {
+      this.lngLat.forEach( (r, iRtePt) => {
+
+        const rtePoint = new Point(r);
 
         // check if current route point is within bounding box of current track
-        if ( rtePt[0] < maxLng && rtePt[0] > minLng && rtePt[1] < maxLat && rtePt[1] > minLat ) {
+        if ( rtePoint.lng < maxLng && rtePoint.lng > minLng && rtePoint.lat < maxLat && rtePoint.lat > minLat ) {
 
           // if route point is within tracks bounding box, loop trhough track to find matching point(s)
-          trk.geometry.coordinates.forEach( (trkPt) => {
+          trk.geometry.coordinates.forEach( (t) => {
+
+            const trkPoint = new Point(t);
 
             // get distance from route point and track point
-            let d = Math.round(gpsfun.p2p(rtePt, trkPt)*100)/100;
+            let d = Math.round(p2p(rtePoint, trkPoint)*100)/100;
 
             // if dist < tol then update matched arrays
             if ( d < this.matchTolerance ) {
@@ -169,13 +177,15 @@ class Match {
     let gapDist = 9999;
     let mDist = 0;
     let gapStart = 0;
+    let lastPoint;
 
     // loop though each route point and count matched distance, and fill if needed
     this.lngLat.forEach( (p, i) => {
 
+      const thisPoint = new Point(p);
       if ( i !== 0 ) {
         // skip the first point
-        const d = gpsfun.p2p(this.lngLat[i-1], this.lngLat[i]);
+        const d = p2p(lastPoint, thisPoint);
 
         if ( this.nmatch[i-1] > 0 && this.nmatch[i] > 0) {
           // if both this point and the previous one are matched, increment match distance
@@ -201,6 +211,8 @@ class Match {
 
         }
       }
+
+      lastPoint = thisPoint;
 
     })
 
@@ -316,47 +328,6 @@ class Match {
 
   } // plotBinary
 
-}
-
-
-
-function contourPalette(nLevels) {
-
-  const highColour = '0000FF'; //blue
-  const lowColour = 'FFFFFF';
-
-  // populate array with reqd steps as ratio 0 --> 1
-  var levels = [];
-  while (levels.length < nLevels) levels.push(levels.length/(nLevels-1));
-
-  // convert colour strings to rgb and interpolate to levels
-  rgbArray = levels.map(x => getRGB(highColour,lowColour,x));
-
-  // with converted rgb array, construct new colour HEXs
-  var hexArray = [];
-  rgbArray.forEach( (rgb) => {
-    s = '#';
-    rgb.forEach( (x) => {
-      s = s + padInt(x.toString(16), 2);
-    })
-    hexArray.push(s);
-  })
-
-  return hexArray;
-
-}
-
-function getRGB(c1, c2, ratio) {
-  var r = Math.ceil(parseInt(c1.substring(0,2), 16) * ratio + parseInt(c2.substring(0,2), 16) * (1-ratio));
-  var g = Math.ceil(parseInt(c1.substring(2,4), 16) * ratio + parseInt(c2.substring(2,4), 16) * (1-ratio));
-  var b = Math.ceil(parseInt(c1.substring(4,6), 16) * ratio + parseInt(c2.substring(4,6), 16) * (1-ratio));
-  return [r, g, b];
-}
-
-function padInt(num, size) {
-  var s = num;
-  while (s.length < size) s = '0' + s
-  return s;
 }
 
 

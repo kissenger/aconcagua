@@ -3,17 +3,20 @@ const express = require('express');
 const app = express();
 const multer = require('multer');
 const bodyParser = require('body-parser');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 
 // Local functions
-const filefun = require('./filefun.js');
-const { Match } = require('./class-match.js');
+// const filefun = require('./filefun.js');
+const Match = require('./_Match.js').Match;
+const GeoJson = require('./_GeoJson.js').GeoJson;
+const wrapGeoJson = require('./utils.js').wrapGeoJson;
+const auth = require('./auth.js');
+const gpx = require('./gpx.js');
 
 // Mongoose setup ... mongo password: p6f8IS4aOGXQcKJN
 const mongoose = require('mongoose');
 const MongoPath = require('./models/path-models');
-const MongoUsers = require('./models/user-models');
+const MongoMatch = require('./models/match-models');
+// const MongoUsers = require('./models/user-models');
 
 /**
  *
@@ -21,26 +24,19 @@ const MongoUsers = require('./models/user-models');
  *
  */
 
-app.use(bodyParser.json());
-app.use(express.static('backend/files'));
-
 // Set up Cross Origin Resource Sharing (CORS )
-app.use((req, res, next) => {
+app.use( (req, res, next) => {
   // inject a header into the response
-  res.setHeader(
-    "Access-Control-Allow-Origin",
-    "*"
-    );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Request-With, Content-Type, Accept, Authorization"
-    );
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PATCH, DELETE, OPTIONS"
-    );
+  res.setHeader("Access-Control-Allow-Origin","*");
+  res.setHeader("Access-Control-Allow-Headers","Origin, X-Request-With, Content-Type, Accept, Authorization");
+  res.setHeader("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS");
   next();
 });
+
+// some stuff
+app.use(bodyParser.json());
+app.use(auth.authRoute);
+app.use(express.static('backend/files'));
 
 /**
  *
@@ -58,101 +54,6 @@ mongoose.connect('mongodb+srv://root:p6f8IS4aOGXQcKJN@cluster0-gplhv.mongodb.net
 
 /**
  *
- * user management
- *
- */
-
-function verifyToken(req, res, next) {
-
-  if (!req.headers.authorization) {
-    return res.status(401).send('Unauthorised request');
-  }
-
-  const token = req.headers.authorization;
-  if ( token === 'null' ) {
-    return res.status(401).send('Unauthorised request');
-  }
-
-  const payload = jwt.verify(token, 'AppleCrumbleAndCustard');
-  if ( !payload ) {
-    return res.status(401).send('Unauthorised request');
-  }
-
-  req.userId = payload.subject;
-  next();
-
-}
-
-app.post('/register', (req, res) => {
-// take incoming user data in the form {email, password}, hash password,
-// save to db, get json token and return to front end
-
-  const jwtSecretKey = 'AppleCrumbleAndCustard';
-  const saltRounds = 10;
-
-  // confirm that email address does not exist in db
-  MongoUsers.Users
-    .findOne( {email: req.body.email}, {'_id': 1} )
-    .then( (user) => {
-
-      if ( user ) {
-        // email already exists in db
-        res.status(200).send('Email address is already registered');
-
-      } else {
-        // email is new
-        bcrypt.hash(req.body.password, saltRounds).then( (hash) => {
-
-          const userData = req.body;
-          req.body['hash'] = hash;
-
-          MongoUsers.Users.create(userData).then( (regUser) => {
-            const token = jwt.sign( {subject: regUser._id}, jwtSecretKey);
-            res.status(200).send({token});
-          })
-        })
-
-      }
-
-  })
-
-});
-
-
-
-app.post('/login', (req, res) => {
-
-  const jwtSecretKey = 'AppleCrumbleAndCustard';
-
-  // check that email address exists and return data in variable user
-  MongoUsers.Users.findOne( {email: req.body.email}, {'hash': 1} ).then( (user) => {
-
-    if (!user) {
-      // user does not exist
-      res.status(401).send('Email address is not registered');
-
-    } else {
-      // user exists
-      bcrypt.compare(req.body.password, user.hash).then( (result) => {
-
-        if (result) {
-          // password is ok
-          const token = jwt.sign({ subject: user._id }, jwtSecretKey);
-          res.status(200).send({token});
-        } else {
-          // incorrect password
-          res.status(401).send('Password does not match registered email');
-        }
-
-      })
-    }
-  })
-});
-
-
-
-/**
- *
  * new file data is submitted from the front end
  *
  */
@@ -167,21 +68,24 @@ var upload = multer({
 });
 
 
-app.post('/loadtracks/:singleOrBatch', verifyToken, upload.array('filename', 500), (req, res) => {
+app.post('/loadtracks/:singleOrBatch', auth.verifyToken, upload.array('filename', 500), (req, res) => {
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
 
   // read data into buffer and interprete gpx
   const gpxBuffer = req.files.map(a => a.buffer.toString());
-  const arrayOfPaths = gpxBuffer.map(filefun.gpxToPath);
-
+  const arrayOfPaths = gpxBuffer.map(gpx.toPath);
 
   if ( req.params.singleOrBatch === 'batch' ) {
-
     // batch upload
-    let arrayOfGeoJsons = arrayOfPaths.map(filefun.getSingleGeoJson);
-    arrayOfGeoJsons = arrayOfGeoJsons.map( (path) => {
-      path.isSaved = true;
-      return path});
 
+    let arrayOfGeoJsons = arrayOfPaths.map( (x) => new GeoJson(x, userId, true));
+
+      // db operations
     MongoPath.Tracks
       .insertMany(arrayOfGeoJsons, {writeConcern: {j: true}})
       .then( (documents) => {
@@ -189,6 +93,7 @@ app.post('/loadtracks/:singleOrBatch', verifyToken, upload.array('filename', 500
 
         trackIds = documents.map( (d) => d._id );
 
+        // ensures update of match data is done sequentially
         p = Promise.resolve();
         for (let i = 0; i < trackIds.length; i++) {
           p = p.then( () => new Promise( resolve => {
@@ -201,37 +106,43 @@ app.post('/loadtracks/:singleOrBatch', verifyToken, upload.array('filename', 500
 
   } else {
     // single upload
+    // const singleGeoJson = getSingle(arrayOfPaths[0]);
+    // const singleGeoJson = new GeoJson(arrayOfPaths[0], userId, false);
+    // singleGeoJson.userId = userId;
 
-    const singleGeoJson = filefun.getSingleGeoJson(arrayOfPaths[0]);
+
+    path = new GeoJson(arrayOfPaths[0], userId, false);
 
     // save to db
     MongoPath.Tracks
-      .create(singleGeoJson)
+      .create(path)
       .then( (documents) => {
-        res.status(201).json({ 'geoJson': filefun.getMultiGeoJson([documents]) });
+        res.status(201).json({ 'geoJson': wrapGeoJson([documents]) });
       })
   }
 
 });
 
-app.post('/loadroutes', verifyToken, upload.single('filename'), (req, res) => {
+app.post('/loadroutes', auth.verifyToken, upload.single('filename'), (req, res) => {
 
-  // Read file data & convert to geojson format
-  const pathAsArray = filefun.gpxToPath(req.file.buffer.toString());
-  const singleGeoJson = filefun.getSingleGeoJson(pathAsArray);
-  // const multiGeoJson = filefun.getMultiGeoJson([singleGeoJson]);
-
-
-  if ( singleGeoJson.type === 'track' ) {
-
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
   }
 
-  // Save route into database
-  const newRoute = new MongoPath.Routes(singleGeoJson);
+  // Read file data & convert to geojson format
+  const pathAsArray = gpx.toPath(req.file.buffer.toString());
+  // const singleGeoJson = getSingle(pathAsArray);
+  const singleGeoJson = new GeoJson(pathAsArray, userId, false)
 
-  newRoute.save().then( documents => {
+  // insert user id into daat object
+  // singleGeoJson.userId = userId;
+
+  // Save route into database
+  MongoPath.Routes.create(singleGeoJson).then( documents => {
     res.status(201).json({
-        'geoJson': filefun.getMultiGeoJson([documents])
+        'geoJson': wrapGeoJson([documents])
       });
     }
   )
@@ -242,24 +153,31 @@ app.post('/loadroutes', verifyToken, upload.single('filename'), (req, res) => {
  *  Save a path to database
  *  id of path is provided
  */
-app.post('/save-path/:type/:id', verifyToken, (req, res) => {
+app.post('/save-path/:type/:id',  auth.verifyToken, (req, res) => {
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
 
   let pathModel;
-  let condQ = {}, filtQ = {};
+  let condition = {}, filter = {};
 
   // get the appropriate model
   if ( req.params.type === 'route' ) { pathModel  = MongoPath.Routes } ;
   if ( req.params.type === 'track' ) { pathModel  = MongoPath.Tracks } ;
 
   // construct query based on incoming payload
-  condQ['_id'] = req.params.id;
-  filtQ['isSaved'] = true;
-  if ( req.body.newDesc ) { filtQ['description'] = req.body.newDesc; }
-  if ( req.body.newName ) { filtQ['name'] = req.body.newName; }
+  condition['_id'] = req.params.id;
+  condition['userId'] = userId;
+  filter['isSaved'] = true;
+  if ( req.body.newDesc ) { filter['description'] = req.body.newDesc; }
+  if ( req.body.newName ) { filter['name'] = req.body.newName; }
 
   // query database, updating change data and setting isSaved to true
   pathModel
-    .updateOne(condQ, {$set: filtQ}, {writeConcern: {j: true}})
+    .updateOne(condition, {$set: filter}, {writeConcern: {j: true}})
     .then( () => {
       res.status(201).json( {'result': 'save ok'} );
       if ( req.params.type === 'track' ) {
@@ -274,10 +192,16 @@ app.post('/save-path/:type/:id', verifyToken, (req, res) => {
  *  Delete a path from database
  *  id of path is provided
  */
-app.get('/delete-path/:type/:id', verifyToken, (req, res) => {
+app.get('/delete-path/:type/:id', auth.verifyToken, (req, res) => {
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
 
   let pathModel;
-  let condQ = {}, filtQ = {};
+  let condition = {}, filter = {};
 
   // get the appropriate model
   if ( req.params.type === 'route' ) { pathModel  = MongoPath.Routes} ;
@@ -287,12 +211,13 @@ app.get('/delete-path/:type/:id', verifyToken, (req, res) => {
   matchDelete(req.params.id, req.params.type);
 
   // construct query based on incoming payload
-  condQ['_id'] = req.params.id;
-  filtQ['isSaved'] = false;
+  condition['_id'] = req.params.id;
+  condition['userId'] = userId;
+  filter['isSaved'] = false;
 
   // query database, updating change data and setting isSaved to true
   pathModel
-    .updateOne(condQ, {$set: filtQ})
+    .updateOne(condition, {$set: filter})
     .then( () => { res.status(201).json( {'result': 'delete ok'} ) },
         (err) => { res.status(201).json(err) });
 
@@ -301,34 +226,41 @@ app.get('/delete-path/:type/:id', verifyToken, (req, res) => {
 /**
  *  Retrieve a list of paths from database
  */
-app.get('/get-paths-list/:type', verifyToken, (req, res) => {
+app.get('/get-paths-list/:type', auth.verifyToken, (req, res) => {
 
+  // ensure user is authorised
+  const userId = req.userId;
+  console.log(userId);
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  // variables
   let pathModel;
-  let condQ = {}, filtQ = {}, sortQ = {};
+  let condition = {}, filter = {}, sort = {};
 
   // get the appropriate model and setup query
-  condQ['isSaved'] = true;
-  filtQ['properties.pathStats.totalDistance'] = 1;
-  filtQ['name'] = 1;
+  condition['isSaved'] = true;
+  condition['userId'] = userId;
+  filter['properties.stats'] = 1;
+  filter['name'] = 1;
 
   if ( req.params.type === 'route' ) {
     pathModel = MongoPath.Routes;
-    filtQ['properties.creationDate'] = 1;
-    sortQ['properties.creationDate'] = -1;
+    filter['properties.creationDate'] = 1;
+    sort['properties.creationDate'] = -1;
   };
 
   if ( req.params.type === 'track' ) {
     pathModel = MongoPath.Tracks;
-    filtQ['properties.startTime'] = 1;
-    sortQ['properties.startTime'] = -1;
+    filter['properties.startTime'] = 1;
+    sort['properties.startTime'] = -1;
   };
 
   // execute the query and return result to front-end
   pathModel
-    .find(condQ, filtQ).sort(sortQ)
-    .then(documents => {res.status(201).json(documents)
-          // documents.length !== 0 ? documents : {'result': 'failed to load tracks'});
-    });
+    .find(condition, filter).sort(sort)
+    .then(documents => { res.status(201).json(documents) });
 
 })
 
@@ -336,9 +268,16 @@ app.get('/get-paths-list/:type', verifyToken, (req, res) => {
  *  Retrieve a single path from database
  *  id of required path is supplied
  */
-app.get('/get-path-by-id/:type/:id/:idOnly', verifyToken, (req, res) => {
+app.get('/get-path-by-id/:type/:id/:idOnly', auth.verifyToken, (req, res) => {
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
 
   let pathModel;
+  let condition = {};
 
   // get the appropriate model
   if ( req.params.type === 'route' ) { pathModel = MongoPath.Routes };
@@ -350,7 +289,11 @@ app.get('/get-path-by-id/:type/:id/:idOnly', verifyToken, (req, res) => {
     res.status(201).json({'id': 0});
 
   } else {
-    pathModel.find({'_id': req.params.id}).then(documents => {
+
+    condition['userId'] = userId;
+    condition['_id'] = req.params.id;
+
+    pathModel.find(condition).then(documents => {
 
       if ( req.params.idOnly === 'true' ) {
         res.status(201).json({
@@ -358,7 +301,7 @@ app.get('/get-path-by-id/:type/:id/:idOnly', verifyToken, (req, res) => {
         });
       } else {
         res.status(201).json({
-          'geoJson': filefun.getMultiGeoJson(documents)
+          'geoJson': wrapGeoJson(documents)
         });
       };
 
@@ -372,22 +315,29 @@ app.get('/get-path-by-id/:type/:id/:idOnly', verifyToken, (req, res) => {
  *    Route: Time route was uploaded
  *    Track: Time track was recorded
  */
-app.get('/get-path-auto/:type', verifyToken, (req, res) => {
+app.get('/get-path-auto/:type', auth.verifyToken, (req, res) => {
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
 
   let pathModel;
-  let condQ = {}, sortQ = {};
+  let condition = {}, sort = {};
 
   // get the appropriate model
   if ( req.params.type === 'route' ) { pathModel = MongoPath.Routes };
   if ( req.params.type === 'track' ) { pathModel = MongoPath.Tracks };
 
   // construct query
-  condQ['isSaved'] = 'true';
-  sortQ['properties.startTime'] = -1;
+  condition['isSaved'] = 'true';
+  condition['userId'] = userId;
+  sort['properties.startTime'] = -1;
 
   // query the database, checking for zero returns and adjusting id accordingly
   pathModel
-    .find(condQ).sort(sortQ).limit(1)
+    .find(condition).sort(sort).limit(1)
     .then(documents => {
         res.status(201).json({
           'id': documents.length === 0 ? 0 : documents[0]._id });
@@ -413,15 +363,20 @@ app.get('/flush', (req, res) => {
 /**
  *  Perform route matching on newly uploaded route
  */
-app.get('/match-from-load/:id', verifyToken, (req, res) => {
+app.get('/match-from-load/:id', auth.verifyToken, (req, res) => {
 
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
   const routeId = req.params.id;
 
   MongoPath.Routes
     .find({'_id': routeId})
     .then( (result)  => {
 
-      const route = filefun.getMultiGeoJson( result );
+      const route = wrapGeoJson( result );
       const geomQuery = {
         'type': 'Polygon',
         'coordinates': [[
@@ -440,11 +395,11 @@ app.get('/match-from-load/:id', verifyToken, (req, res) => {
         .then( (results) => {
 
             console.log('Matched ' + results.length + ' tracks');
-            const tracks = filefun.getMultiGeoJson(results);
+            const tracks = wrapGeoJson(results);
             const newMatch = new Match();
             newMatch.run(route, tracks);
 
-            MongoPath.Match.create(newMatch)
+            MongoMatch.Match.create(newMatch);
 
             res.status(201).json({
               'geoRoute': route,
@@ -463,13 +418,12 @@ app.get('/match-from-load/:id', verifyToken, (req, res) => {
 /**
  *  Retrieve route matching data from previously matched route
  */
-app.get('/match-from-db/:id', verifyToken, (req, res) => {
+app.get('/match-from-db/:id', auth.verifyToken, (req, res) => {
 
   const routeId = req.params.id;
 
   // Get match array from db
-  console.log('match-from-db: get matches...');
-  MongoPath.Match
+  MongoMatch.Match
     .find({'routeId': routeId})
     .then( (match) => {
 
@@ -487,9 +441,10 @@ app.get('/match-from-db/:id', verifyToken, (req, res) => {
         .find( { '_id': { $in: match[0].trksList } } )
         .then( (result) => {
 
-          // format tracks, get matched geojsons and send to FE
+          // format tracks, get matched geojson and send to FE
           console.log('match-from-db: found ' + result.length + ' tracks');
-          const tracks = filefun.getMultiGeoJson(result, 'track');
+          const tracks = wrapGeoJson(result, 'track');
+
           res.status(201).json({
             'geoTracks': tracks,
             'geoContour': thisMatch.plotContour(),
@@ -514,7 +469,7 @@ function matchDelete(pathId, pathType) {
     // if this is a route, then simply delete all match data for this route id
     console.log('routeId: ' + pathId);
 
-    MongoPath.Match
+    MongoMatch.Match
       .deleteOne({'routeId': pathId}, (err) => {});
 
   } else {
@@ -522,7 +477,7 @@ function matchDelete(pathId, pathType) {
     console.log('trkId: ' + pathId);
 
     // find all match data that contains trackId
-    MongoPath.Match
+    MongoMatch.Match
       .find( { 'trksList': pathId } )
       .then( (matches) => {
 
@@ -536,7 +491,7 @@ function matchDelete(pathId, pathType) {
           thisMatch.removeTrack(pathId);
 
           // update match data in db
-          MongoPath.Match
+          MongoMatch.Match
             .replaceOne( {'_id': m._id}, thisMatch, { writeConcern: { j: true } } )
             .then( (msg) => {console.log(msg)})
 
@@ -569,7 +524,7 @@ function matchNewTrack(trkId) {
         }
 
         // convert to geoJson and get bounding box for search query
-        const track = filefun.getMultiGeoJson(result);
+        const track = wrapGeoJson(result);
         const geomQuery = {
           'type': 'Polygon',
           'coordinates': [[
@@ -581,18 +536,20 @@ function matchNewTrack(trkId) {
           ]]
         };
 
+        console.log(geomQuery[0]);
+
         // find all routes that intersect with selected route id
         console.log('matchNewTrack: get routes...');
         MongoPath.Routes
           .find( { geometry: { $geoIntersects: { $geometry: geomQuery } } })
           .then( (results) => {
 
-              const routes = filefun.getMultiGeoJson(results);
+              const routes = wrapGeoJson(results);
               const routeIds = results.map( (r) => r._id );
               console.log('matchNewTrack: matched  ' + results.length + ' routes to this track');
 
               // get the match data for selected routes
-              MongoPath.Match
+              MongoMatch.Match
                 .find( { 'routeId': { $in: routeIds } } )
                 .then( (matches) => {
 
@@ -611,7 +568,7 @@ function matchNewTrack(trkId) {
                     thisMatch.run(routes, track);
 
                     // save to db
-                    MongoPath.Match
+                    MongoMatch.Match
                       .replaceOne( {'_id': m._id}, thisMatch, {writeConcern: { j: true}})
                       .then( (msg) => {
                         console.log(msg);
@@ -628,6 +585,5 @@ function matchNewTrack(trkId) {
     });
 
 }
-
 
 module.exports = app;

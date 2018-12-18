@@ -25,7 +25,7 @@ var gpsfun = require('./gpsfun.js');
  *          data is passed back in case that file is read succesfully.
  */
 
-function readUploadedFile(fn) {
+function readFileBuffer(fn) {
 
   return new Promise(function (resolve, reject){
     fs.readFile(fn, "utf8", function(err, data){

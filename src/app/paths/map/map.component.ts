@@ -52,7 +52,7 @@ export class MapComponent implements OnInit, OnDestroy {
     'route':   { 'clickable': true, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 1.0 },
     'tracks':  { 'clickable': true, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 0.4 }
   };
-  public timer;
+  public timer: NodeJS.Timer;
   public that = this;
 
   constructor(
@@ -75,9 +75,6 @@ export class MapComponent implements OnInit, OnDestroy {
 
       // Determine page type
       this.isReviewPage = params.id === '-1' ? true : false;
-      // this.isMatchPage = params.match === 'match' ? true : false;
-
-      // if path id is specified in the url, then request path data from backend
       document.documentElement.style.cursor = 'wait';
 
       if ( typeof this.pathID !== 'undefined') {
@@ -86,9 +83,9 @@ export class MapComponent implements OnInit, OnDestroy {
           // this is NOT review page
 
           if ( !this.subsActive ) {
-            // previous subscription is not open
+            // only request data i=f existing subs in not still active
 
-            this.httpService.getPathById(this.pathType, this.pathID)
+            this.httpService.getPathById(this.pathType, this.pathID, false)
               .subscribe( (result) => {
                 this.path = result['geoJson'];
                 this.loadMap();
@@ -106,7 +103,10 @@ export class MapComponent implements OnInit, OnDestroy {
                   this.processMatchData(result);
                 });
 
+            } else {
+              this.loadMap();
             }
+            document.documentElement.style.cursor = 'default';
           }
 
         } else {
@@ -118,7 +118,8 @@ export class MapComponent implements OnInit, OnDestroy {
               this.pathID = this.path.features[0]._id;
               this.loadMap();
               document.documentElement.style.cursor = 'default';
-            });
+          });
+
         }
 
       }
@@ -130,8 +131,6 @@ export class MapComponent implements OnInit, OnDestroy {
   loadMap() {
 
     console.log(this.path);
-
-    // launch map
 
     // const mapService = this.mapService;
     this.map = new google.maps.Map(document.getElementById('map'), {
@@ -246,8 +245,10 @@ export class MapComponent implements OnInit, OnDestroy {
     // emit data to data component
     if ( this.pathID !== '0' ) {
       this.dataService.fromMapToData.emit(
-        this.getDataPackage(this.path.features[0])
+        // this.getDataPackage(this.path.features[0])
+        this.path.features[0]
       );
+      this.dataService.storeData(this.path.features[0]);
     }
 
 
@@ -367,7 +368,6 @@ export class MapComponent implements OnInit, OnDestroy {
 
         // attach button listeners
         if ( thisCtrl.isEnabled ) {
-          console.log(that);
           innerDiv.addEventListener('click', thisCtrl.clickFunction);
           innerDiv.addEventListener('mouseover', () => { innerDiv.style.backgroundColor = that.btnLooks.bgHover; });
           innerDiv.addEventListener('mouseout', () => { innerDiv.style.backgroundColor = that.btnLooks.bgEnabled; });
@@ -638,12 +638,10 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   pathLoad() {
-    console.log('click load');
     this.router.navigate(['load-paths', this.pathType, 'single']);
   }
 
   batchLoad () {
-    console.log('click batch load');
     this.router.navigate(['load-paths', this.pathType, 'batch']);
   }
 
@@ -655,7 +653,6 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   zoomIn() {
-    console.log('click zoom');
      // needs reviewing:
     // for (const path of this.pathAsGeoJson.features) {
     //   if (path.properties.isClicked) {
@@ -670,7 +667,6 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   fitAll() {
-    console.log('click fit');
     // needs reviewing:
     // this.map.fitBounds({
     //   north: this.pathAsGeoJson.bbox[3],
@@ -681,17 +677,14 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   createNew () {
-    console.log('create new');
     this.router.navigate(['create-route']);
   }
 
   pathSave() {
-    console.log('click save');
     this.openForm();
   }
 
   pathDiscard() {
-    console.log('click discard');
     this.router.navigate(['paths', this.pathType]);
   }
 
@@ -739,16 +732,14 @@ export class MapComponent implements OnInit, OnDestroy {
       this.setInputDisabled(<HTMLElement>document.getElementById('Tracks'));
       this.setInputDisabled(<HTMLElement>document.getElementById('Binary'));
       this.setInputDisabled(<HTMLElement>document.getElementById('Contour'));
-      this.httpService.matchFromLoad(this.pathID)
-        .subscribe( (dataIn) => {
-          this.processMatchData(dataIn);
+      this.httpService.matchFromLoad(this.pathID).subscribe( (dataIn) => {
+        this.processMatchData(dataIn);
       });
     }
 
-    this.httpService.savePath(this.pathType, this.pathID, payload)
-      .subscribe( () => {
-        this.router.navigate(['paths', this.pathType, this.pathID]);
-      });
+    this.httpService.savePath(this.pathType, this.pathID, payload).subscribe( ( result ) => {
+      this.router.navigate(['paths', this.pathType, this.pathID]);
+    });
 
   }
 
@@ -787,23 +778,25 @@ processMatchData(d) {
  * DATA TRANSFER
  */
 
-  getDataPackage(source) {
-    try {
-      return {
-        'stats': source.properties.pathStats,
-        'name': source.name,
-        'description': source.description,
-        'color': source.properties.color
-      };
-    } catch {
-      return {
-        'stats': source.getProperty('pathStats'),
-        'name': source.getProperty('name'),
-        'description': source.getProperty('description'),
-        'color': source.getProperty('color')
-      };
-    }
-  }
+  // getDataPackage(source) {
+  //   try {
+  //     return {
+  //       'stats': source.properties.pathStats,
+  //       'name': source.name,
+  //       'description': source.description,
+  //       'startTime': source.properties.startTime,
+  //       'color': source.properties.color
+  //     };
+  //   } catch {
+  //     return {
+  //       'stats': source.getProperty('pathStats'),
+  //       'name': source.getProperty('name'),
+  //       'description': source.getProperty('description'),
+  //       'startTime': source.getProperty('startTime'),
+  //       'color': source.getProperty('color')
+  //     };
+  //   }
+  // }
 
 
 

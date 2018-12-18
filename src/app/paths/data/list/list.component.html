@@ -1,0 +1,23 @@
+
+
+<div class='container'>
+  <div *ngFor="let line of dataHtml">
+    <div id={{line._id}} (click)="onLineClick(line._id)" class="item">
+      <div class="name">
+          {{line.name}}
+      </div>
+
+      <div *ngIf="pathType === 'route'" class="details">
+        {{line.properties.stats.distance/1000 | number: '1.1-1'}} km -
+        {{line.properties.stats.ascent / line.properties.stats.distance * 1000 | number: '1.1-1'}} m/km
+      </div>
+
+      <div *ngIf="pathType === 'track'" class="details">
+        {{utils.prettifyDate(line.properties.stats.startTime)}} -
+        {{line.properties.stats.distance/1000 | number: '1.1-1'}} km -
+        {{utils.formatDuration(line.properties.stats.duration)}}
+      </div>
+
+    </div>
+  </div>
+</div>

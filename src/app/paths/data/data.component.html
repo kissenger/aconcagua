@@ -1,22 +1,28 @@
-Name: {{pathName}}
-<p>
-Description:
-<br>
-{{pathDescription}}
-<p>
-Distance: {{totalDistance/1000 | number: '1.1-1'}}km
-<br>
-Ascent: {{totalAscent | number: '1.0-0'}}m
-<br>
-Descent: {{totalDescent | number: '1.0-0'}}m
-<br>
-Max p2p distance: {{maxDistBtwnTwoPoints | number: '1.1-1'}}m
-<br>
-Ave p2p distance: {{aveDistBtwnTwoPoints | number: '1.1-1'}}m
-<br>
-Distance complete: {{matchDistance/1000 | number: '1.1-1'}}km
-<br>
-Proportion complete: {{matchDistance/totalDistance*100 | number: '1.1-1'}}%
-<br>
+
+<div class='container'>
+
+  <div class='summary-container'>
+    <app-summary></app-summary>
+  </div>
+
+  <div class='menu-and-list-container'>
+
+    <div class='menu'>
+      <div class="tab-menu-left" id='left' (click)="menuClick('left')">List</div>
+      <div class="tab-menu-right" id='right' (click)="menuClick('right')">Detail</div>
+    </div>
+
+    <div *ngIf="tabName === 'left'" class="tab-content-left">
+        <app-list></app-list>
+    </div>
+
+    <div *ngIf="tabName === 'right'" class="tab-content-right">
+        <app-detail></app-detail>
+    </div>
+
+  </div>
+</div>
+
+
 
 

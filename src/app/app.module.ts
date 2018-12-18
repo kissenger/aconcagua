@@ -8,6 +8,7 @@ import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { DataService } from './data.service';
 import { HttpService } from './http.service';
+import { UtilsService } from './utils.service';
 import { TokenInterceptorService } from './token-interceptor.service';
 
 // Local imports: components
@@ -21,7 +22,9 @@ import { LoadComponent } from './paths/load/load.component';
 import { CreateComponent } from './paths/create/create.component';
 import { MapComponent } from './paths/map/map.component';
 import { DataComponent } from './paths/data/data.component';
-import { ListComponent } from './paths/list/list.component';
+import { ListComponent } from './paths/data/list/list.component';
+import { DetailComponent } from './paths/data/detail/detail.component';
+import { SummaryComponent } from './paths/data/summary/summary.component';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
 
@@ -35,6 +38,8 @@ import { RegisterComponent } from './register/register.component';
     PathsComponent,
     MapComponent,
     DataComponent,
+    DetailComponent,
+    SummaryComponent,
     LoadComponent,
     ListComponent,
     CreateComponent,
@@ -51,6 +56,7 @@ import { RegisterComponent } from './register/register.component';
     DataService,
     AuthService,
     HttpService,
+    UtilsService,
     AuthGuard,
     {
       provide: HTTP_INTERCEPTORS,

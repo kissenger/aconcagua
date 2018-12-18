@@ -1,0 +1,49 @@
+<div class='container'>
+  Distance: {{stats.distance/1000 | number: '1.1-1'}}km<br>
+  <div *ngIf="showTime">
+    Duration: {{utils.formatDuration(stats.duration)}}<br>
+    Moving Time: {{utils.formatDuration(stats.movingTime)}}<br>
+    Average Pace: {{stats.pace | number: '1.1-1'}} min/km<br>
+  </div>
+  <hr>
+
+  <div *ngIf="showElev">
+    Ascent: {{stats.ascent | number: '1.0-0'}}m<br>
+    Descent: {{stats.descent | number: '1.0-0'}}m<br>
+    Lumpiness: {{ stats.ascent / stats.distance * 1000 | number: '1.1-1'}}m/km
+    <p>
+    <table class='data'>
+      <tr>
+        <th>Height Gain<br>[m]</th>
+        <th>Grad Ave<br>[%]</th>
+        <th>Grad Max<br>[%]</th>
+        <th *ngIf="showTime">Pace<br>[min/km]</th>
+        <th *ngIf="showTime">ascRate<br>[m/min]</th>
+      </tr>
+      <tr *ngFor="let row of stats.hills">
+        <td>{{row.dHeight | number: '1.0-0'}}</td>
+        <td>{{row.gradient.ave | number: '1.0-1'}}</td>
+        <td>{{row.gradient.max | number: '1.0-1'}}</td>
+        <td *ngIf="showTime">{{row.pace | number: '1.0-1'}}</td>
+        <td *ngIf="showTime">{{row.ascRate | number: '1.0-1'}}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div *ngIf="showTime">
+    <hr>
+    <p>
+
+    Splits:
+    <table class='data'>
+      <tr>
+        <th class='width1'>km</th>
+        <th class='width2'>pace<br>[min/km]</th>
+      </tr>
+      <tr *ngFor="let row of stats.kmSplits; let i = index">
+        <td>{{i+1}}</td>
+        <td>{{row[1] | number: '1.0-1'}}</td>
+      </tr>
+    </table>
+  </div>
+</div>
