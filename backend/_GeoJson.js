@@ -1,40 +1,59 @@
-const Route = require('./_Path.js').Route;
-const Track = require('./_Path.js').Track;
+
+
+const getRandomColour = require('./utils.js').getRandomColour;
 
 class GeoJson {
-  // blah
 
-  constructor( path, userId, isSaved ) {
-    // console.log(path);
-    this.userId = userId;
-    this.isSaved = isSaved;
-    this.category = path.category();
-    this.type = 'Feature';
-    this.geometry = {
-      type: 'LineString',
-      coordinates: path.points.map( (p) => p.lngLat)
-    }
-    this.properties = {
-      params: path.params,
-      stats: path.stats
-    };
-    this.bbox = [
-      path.stats.bbox.minLng,
-      path.stats.bbox.minLat,
-      path.stats.bbox.maxLng,
-      path.stats.bbox.maxLat
-    ];
-    if ( typeof path.name === 'undefined' ) {
-      this.name = name;
-    } else {
-      if ( path instanceof Route ) {
-        this.name = this.category + ' route';
-      } else if ( path instanceof Track ) {
-        this.name = this.category + ' track';
-      }
+  // format data for transmission to the front end
+
+  constructor( pathArray ) {
+
+    // ensure we were passed an array, if not then make it one
+    if ( !(pathArray instanceof Array) ) pathArray=[pathArray];
+
+    let path = [];
+    let outerBbox = [ 180, 90, -180, -90 ]; //minLng, minLat, maxLng, maxLat
+
+    pathArray.forEach ((p, i) => {
+      const bbox = [p.stats.bbox[0], p.stats.bbox[1], p.stats.bbox[2], p.stats.bbox[3]];
+      this.stats = p.stats;
+      this.stats.startTime = p.startTime;
+
+      path.push({
+        type: 'Feature',
+        bbox: bbox,
+        geometry: {
+          type: 'linestring',
+          coordinates: p.geometry.coordinates
+        },
+        properties: {
+          userId: p.userId,
+          pathId: p._id,
+          creationDate: p.creationDate,
+          pathType: p.pathType,
+          description: p.description,
+          color: getRandomColour(i),
+          category: p.category,
+          name: p.name.length === 0 ? p.category + ' ' + p.pathType : p.name,
+          stats: this.stats
+        },
+      });
+
+      outerBbox[0] = bbox[0] < outerBbox[0] ? bbox[0] : outerBbox[0];
+      outerBbox[1] = bbox[1] < outerBbox[1] ? bbox[1] : outerBbox[1];
+      outerBbox[2] = bbox[2] > outerBbox[2] ? bbox[2] : outerBbox[2];
+      outerBbox[3] = bbox[3] > outerBbox[3] ? bbox[3] : outerBbox[3];
+
+    })
+
+    return {
+      "type": "FeatureCollection",
+      "bbox": outerBbox,
+      "features": path.map(x => x)
     }
 
   }
+
 }
 
 module.exports = {

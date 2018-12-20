@@ -1,7 +1,7 @@
 
-const Route = require('./_Path.js').Route;
+const Route = require('./_Path.js').Path;
 const Track = require('./_Path.js').Track;
-const Point = require('./_Point.js').Point;
+// const Point = require('./_Point.js').Point;
 
 /**
  * getPathFromGpx
@@ -20,11 +20,13 @@ function toPath(data) {
   var a = 0;                          // start of interesting feature
   var b = data.indexOf("\r",a);     // end of interesting feature
   var i = 0;                          // counter
-  var pathType = '';
+  var typeOfPath = '';
   var nameOfPath = '';                 // "route" or "path"
   const maxIters = 100000;             // will only process this number of points
   var latValue, lngValue, eleValue, timeValue;
-  let points = [];
+  let lngLat = [];
+  let time = [];
+  let elev = [];
 
 
   /**
@@ -38,14 +40,14 @@ function toPath(data) {
 
     if ( lineData.indexOf("<trk>") !== -1 ) {
       // console.log('getPathFromGpx says: found a track');
-      pathType = "track";
+      typeOfPath = "track";
       typeTag = "trkpt";
       break;
     }
 
     if ( lineData.indexOf("<rte>") !== -1 ) {
       // console.log('getPathFromGpx says: found a route');
-      pathType = "route";
+      typeOfPath = "route";
       typeTag = "rtept";
       break;
     }
@@ -107,15 +109,21 @@ function toPath(data) {
     }
 
     // create point and push to path
-    points.push(new Point([lngValue, latValue], eleValue, timeValue, null, null));
+    lngLat.push([lngValue, latValue]);
+    if ( eleValue) elev.push(eleValue);
+    if ( timeValue ) time.push(timeValue);
+    // points.push(new Point([lngValue, latValue], eleValue, timeValue, null, null));
     i++;
   } while ( i < maxIters )
 
-  if ( pathType === 'route') {
-    var path = new Route(nameOfPath, points);
-  } else if ( pathType === 'track') {
-    var path = new Track(nameOfPath, points);
-  }
+  // if ( pathType === 'route') {
+  //   var path = new Route(nameOfPath, points);
+  // } else if ( pathType === 'track') {
+  //   var path = new Track(nameOfPath, points);
+  // }
+
+  if ( typeOfPath === 'route') var path = new Route(nameOfPath, lngLat, elev, time);
+  if ( typeOfPath === 'track') var path = new Track(nameOfPath, lngLat, elev, time);
 
   // exportCsv(path);
 

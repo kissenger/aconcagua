@@ -18,11 +18,9 @@ export class DataService {
   fromMapToData = new EventEmitter();
 
   storeData(data) {
-    if ( 'category' in data ) {
+
       this.pathData = data;
-    } else {
-      this.matchData = data;
-    }
+      console.log(data);
   }
 
   getStoredData() {

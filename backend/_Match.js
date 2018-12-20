@@ -1,145 +1,36 @@
 const contourPalette = require('./utils.js').contourPalette;
 const p2p = require('./geo.js').p2p;
 const Point = require('./_Point.js').Point;
+const Path = require('./_Path.js').Path;
+
+GAP_TOLERANCE = 500;  // in metres
+FUDGE_FACTOR = 1.0001;
+MATCH_TOLERANCE = 20;  // in metres
+
+
+
 
 class Match {
-  constructor(matchObject) {
 
-    // class variables
-    this.gapTolerance = 500;  // in metres
-    this.fudgeFactor = 1.0001;
-    this.matchTolerance = 20;  // in metres
+  constructor(rte, matchObject) {
 
-    if ( !matchObject ) {
-      // if match object does not exist, then create template
+    // fill variables with incoming data
 
-    } else {
-
-      // otherwise use data supplied
-      this.userId = matchObject.userId;
-      this.routeId = matchObject.routeId;
-      this.bbox = matchObject.bbox;
-      this.lngLat = matchObject.lngLat;
-      this.tracks = matchObject.tracks;
-      this.dist = matchObject.dist;
-      this.trksList = matchObject.trksList;
-      this.nmatch = matchObject.nmatch;
-      this.matchDistance = matchObject.matchDistance;
-
+    if (rte) {
+      this.routeId = rte._id,
+      this.bbox = rte.stats.bbox,
+      this.route = new Path('', rte.geometry.coordinates)
     }
+    this.params = matchObject.params;
+    console.log('$%^&*');
+    console.log(this.stats);
+    if (this.stats) this.stats = matchObject.stats;
+
+    // create a route path
+
+
   }
 
-  /**
-   * Activate route matching logic
-   */
-  run(rte, trks) {
-
-  /**
-   *  Route matching algorithm
-   *
-   * Notes from previous ruby implmentation
-    # 1) for each route point check against all bounding boxes as you go, thereby removing outer loop ... quicker?
-    # 2) optimise 'point skipping' logic
-    # 3) implement 'point skipping' on route points
-    # 4) better selection of tracks from mysql database
-    # 5) better utilisation of mysql - return only sections of route of interest??
-    # 6) employ route simplification?
-   *
-   * Implemntation approach
-   * ======================
-   * For each provided route
-   *   For each provided track
-   *     Loop through route points, for each route point
-   *       Check if route point is within bounding box of current selected track
-   *         If it is, then loop through all the points of the track to find point closest to current route point
-   *         If it isn't, then just carry on
-   *       End of loop
-   *     End of loop
-   *   End of loop
-   * End of loop
-   */
-
-    console.log('Match.run()...')
-    // check supplied rte is consistent with routeId on Match class
-    if ( typeof this.lngLat === 'undefined' ) {
-      // this is a new match, so check is not relevant: populate class data
-      this.userId = rte.features[0].userId;
-      this.lngLat = rte.features[0].geometry.coordinates;
-      this.bbox = rte.bbox;
-      this.routeId = rte.features[0]._id;
-      this.tracks = Array.from(this.lngLat, x => []);
-      this.dist = Array.from(this.lngLat, x => []);
-      this.nmatch = Array.from(this.lngLat, x => 0);
-      this.trksList = [];
-      this.matchDistance =  0;
-
-    } else {
-      // match already exists, so confirm
-      if ( rte.features[0]._id != this.routeId ) {
-        console.error('Match.run error: routeId is not consistent with that on Match class')
-      }
-    }
-    // loop through each track
-    trks.features.forEach( (trk) => {
-
-      // find bounding box coords for current track
-      const minLng = trk.bbox[0] < 0 ? trk.bbox[0] * this.fudgeFactor : trk.bbox[0] / this.fudgeFactor;
-      const minLat = trk.bbox[1] < 0 ? trk.bbox[1] * this.fudgeFactor : trk.bbox[1] / this.fudgeFactor;
-      const maxLng = trk.bbox[2] < 0 ? trk.bbox[2] / this.fudgeFactor : trk.bbox[2] * this.fudgeFactor;
-      const maxLat = trk.bbox[3] < 0 ? trk.bbox[3] / this.fudgeFactor : trk.bbox[3] * this.fudgeFactor;
-
-      // loop through each route point
-      this.lngLat.forEach( (r, iRtePt) => {
-
-        const rtePoint = new Point(r);
-
-        // check if current route point is within bounding box of current track
-        if ( rtePoint.lng < maxLng && rtePoint.lng > minLng && rtePoint.lat < maxLat && rtePoint.lat > minLat ) {
-
-          // if route point is within tracks bounding box, loop trhough track to find matching point(s)
-          trk.geometry.coordinates.forEach( (t) => {
-
-            const trkPoint = new Point(t);
-
-            // get distance from route point and track point
-            let d = Math.round(p2p(rtePoint, trkPoint)*100)/100;
-
-            // if dist < tol then update matched arrays
-            if ( d < this.matchTolerance ) {
-
-              const i = this.tracks[iRtePt].indexOf(trk._id)
-
-              if ( i === -1 ) {
-                // if track is not found on current point, push it to array
-                this.tracks[iRtePt].push(trk._id);
-                this.nmatch[iRtePt]++;
-                this.dist[iRtePt].push(d);
-
-              } else {
-                // if track is found on current point, update distance in array
-
-                if ( d < this.dist[iRtePt][i] ) {
-                  this.dist[iRtePt][i] = d;
-                }
-              }
-
-              // if track is not found in overall tracks list, push it
-              if ( this.trksList.indexOf(trk._id) === -1 ) {
-                this.trksList.push(trk._id);
-              }
-            } // if ( dist ...
-
-          }) //trk.forEach
-
-        } // if ( rtePt[0] ...
-
-      }) // rteCoords.forEach
-
-    }) // t.forEach
-
-
-    this.updateStats();
-  }
 
   /**
    * Remove a track from the current match
@@ -147,31 +38,48 @@ class Match {
   removeTrack(trkId) {
 
     // remove track id from trksList
-    this.trksList.splice(this.trksList.indexOf(trkId), 1)
+    this.params.trksList.splice(this.params.trksList.indexOf(trkId), 1)
     // loop through points and remove track id and dist where it exists
-    this.tracks.forEach ( (t, index) => {
+    this.params.tracks.forEach ( (t, index) => {
       let i = t.indexOf(trkId);
       if ( i !== -1 ) {
-        this.tracks[index].splice(i, 1);
-        this.dist[index].splice(i, 1);
-        this.nmatch[index]--;
+        this.params.tracks[index].splice(i, 1);
+        this.params.dist[index].splice(i, 1);
+        this.params.nmatch[index]--;
       }
     })
-    this.updateStats();
 
+    // reanalyse stats
+    this.matchStats();
+
+  }
+
+  createTrackPaths(trks) {
+
+    // if trks isnt an array, make it one
+    if ( !(trks instanceof Array) ) trks=[trks];
+
+    return trks.map( (t) => {
+      const a = new Path('', t.geometry.coordinates);
+      a.injectKeyValuePair({'pathId': t._id});
+      a.injectKeyValuePair({'bbox': t.stats.bbox});
+      return a;
+    });
   }
 
   /**
   * Add a new track to the current match
   */
-  addTrack(rte, trk) {
-    this.run(rte, trk);
+  addTracks(trks) {
+
+    this.analyseMatch(this.createTrackPaths(trks));
+
   }
 
   /**
   * Update the match statistics following a change
   */
-  updateStats() {
+  matchStats() {
 
     console.log('Match.updateStats()...')
     let gapDist = 9999;
@@ -180,22 +88,23 @@ class Match {
     let lastPoint;
 
     // loop though each route point and count matched distance, and fill if needed
-    this.lngLat.forEach( (p, i) => {
+    let index = 0;
+    do  {
+      const thisPoint = this.route.point(index);
 
-      const thisPoint = new Point(p);
-      if ( i !== 0 ) {
+      if ( index !== 0 ) {
         // skip the first point
-        const d = p2p(lastPoint, thisPoint);
+        const d = p2p(thisPoint, lastPoint);
 
-        if ( this.nmatch[i-1] > 0 && this.nmatch[i] > 0) {
+        if ( this.params.nmatch[index-1] > 0 && this.params.nmatch[index] > 0) {
           // if both this point and the previous one are matched, increment match distance
           mDist = mDist + d;
 
-          if ( gapDist < this.gapTolerance ) {
+          if ( gapDist < GAP_TOLERANCE ) {
             // if length of gap was > tolerance then fill the gap and add dist
-            const n = i - gapStart - 1;
+            const n = index - gapStart - 1;
             const f = new Array(n).fill(-1);
-            this.nmatch.splice(gapStart, n, ...f)
+            this.params.nmatch.splice(gapStart, n, ...f)
             mDist = mDist + gapDist;
           }
           gapDist = 9999;
@@ -204,22 +113,29 @@ class Match {
 
           // otherwise measure gap length
           if ( gapDist === 9999 ) {
-            gapStart = i;
+            gapStart = index;
             gapDist = 0;
           }
           gapDist = gapDist + d;
 
         }
-      }
+      } // if ( index !== 0 )
 
       lastPoint = thisPoint;
+      index++;
 
-    })
+    } while (index <= this.route.pathSize)
 
-    this.matchDistance = mDist;
+    this.stats = {
+      matchDistance: mDist,
+      time: 0,
+      nVisits: this.params.trksList.length + 1,
+    }
 
     console.log('Finished');
   }
+
+
 
   plotContour() {
 
@@ -231,11 +147,11 @@ class Match {
     // find min and max number of matches for contour plot
     // find the max of (minimum for each two adjacent numbers)
     let min = 9999, max = -1;
-    this.lngLat.forEach( (p, i) => {
-      if ( i > 0 ) {
-        if ( this.nmatch[i] !== -1 && this.nmatch[i-1] !== -1 ) {
-            const mintemp = Math.max(this.nmatch[i], this.nmatch[i-1]);
-            const maxtemp = Math.min(this.nmatch[i], this.nmatch[i-1]);
+    this.route.lngLat.forEach( (p, i) => {
+      if ( i !== 0 ) {
+        if ( this.params.nmatch[i] !== -1 && this.params.nmatch[i-1] !== -1 ) {
+            const mintemp = Math.max(this.params.nmatch[i], this.params.nmatch[i-1]);
+            const maxtemp = Math.min(this.params.nmatch[i], this.params.nmatch[i-1]);
             min = mintemp < min ? mintemp : min;
             max = maxtemp > max ? maxtemp : max;
         }
@@ -246,17 +162,20 @@ class Match {
     const shift = (max - min) / (nColours - 1) * 0.5;
     let i0 = 0, c0;
 
-    this.lngLat.forEach( (p, i) => {
+    this.route.lngLat.forEach( (p, i) => {
       if ( i !== 0 ) {
-        const nMatches = Math.min(this.nmatch[i] == -1 ? 0 : this.nmatch[i], this.nmatch[i-1] == -1 ? 0 : this.nmatch[i-1]);
+        const nMatches = Math.min(
+          this.params.nmatch[i] == -1 ? 0 : this.params.nmatch[i],
+          this.params.nmatch[i-1] == -1 ? 0 : this.params.nmatch[i-1]
+        );
         const cIndex = Math.ceil((nMatches - min + shift) / (max - min + 2*shift) * nColours);
 
         // only check on 2nd pass through we we need access to first line's colour (via cIndex)
-        if ( (i > 1 && cIndex !== c0) || i === this.lngLat.length - 1 ) {
+        if ( (i > 1 && cIndex !== c0) || i === this.route.pathSize ) {
           geomArr.push({
             'type': 'Feature',
             'geometry':
-              {'coordinates' : this.lngLat.slice(i0, i === this.lngLat.length - 1 ? i+2 : i),
+              {'coordinates' : this.route.lngLat.slice(i0, i === this.route.pathSize ? i+2 : i),
                 'type': 'LineString'},
             'properties':
               {'color': colours[c0-1]}
@@ -272,15 +191,13 @@ class Match {
     return {
       'type': 'FeatureCollection',
       'plotType': 'contour',
-      'stats': {
-        'matchDistance': this.matchDistance,
-        // 'dist': this.dist,
-      },
+      'stats': this.stats,
       'bbox': this.bbox,
       'features': geomArr
     }
 
   } // plotContour
+
 
 
   plotBinary() {
@@ -289,19 +206,18 @@ class Match {
     let isMatched = false;
     let wasMatched = false;
 
-    this.lngLat.forEach( (p, i) => {
+    this.route.lngLat.forEach( (p, i) => {
 
-      isMatched = this.nmatch[i] === 0 ? false : true;
+      isMatched = this.params.nmatch[i] === 0 ? false : true;
       if ( i !== 0 ) {
 
         const colour = ( isMatched && wasMatched ) ?  '#0000FF' : '#000000';
-        if ( i > 1 && colour !== c0 || i === this.lngLat.length - 1 ) {
+        if ( i > 1 && colour !== c0 || i === this.route.pathSize ) {
           // colour has changed or its the last data point
-
           geomArr.push({
             'type': 'Feature',
             'geometry':
-              {'coordinates' : this.lngLat.slice(i0, i === this.lngLat.length - 1 ? i+2 : i),
+              {'coordinates' : this.route.lngLat.slice(i0, i===this.route.pathSize ? i+2 : i),
                 'type': 'LineString'},
             'properties':
               {'color': c0}
@@ -314,23 +230,131 @@ class Match {
       }
       wasMatched = isMatched;
     })
-
+    console.log(this.stats);
     return {
       'type': 'FeatureCollection',
       'plotType': 'binary',
-      'stats': {
-        'matchDistance': this.matchDistance,
-        // 'dist': this.dist,
-      },
+      'stats': this.stats,
       'bbox': this.bbox,
       'features': geomArr
     }
+  }
 
-  } // plotBinary
+
+
+  analyseMatch(tracks) {
+
+    console.log('Match.analyseMatch()...')
+
+    // loop through each track
+    tracks.forEach( (track) => {
+
+      // find bounding box coords for current track
+      const minLng = track.bbox[0] < 0 ? track.bbox[0] * FUDGE_FACTOR : track.bbox[0] / FUDGE_FACTOR;
+      const minLat = track.bbox[1] < 0 ? track.bbox[1] * FUDGE_FACTOR : track.bbox[1] / FUDGE_FACTOR;
+      const maxLng = track.bbox[2] < 0 ? track.bbox[2] / FUDGE_FACTOR : track.bbox[2] * FUDGE_FACTOR;
+      const maxLat = track.bbox[3] < 0 ? track.bbox[3] / FUDGE_FACTOR : track.bbox[3] * FUDGE_FACTOR;
+
+      // loop through each route point
+      this.route.lngLat.forEach( (rp, irp) => {
+
+        const routePoint = this.route.point(irp);
+
+        if ( routePoint.lng < maxLng && routePoint.lng > minLng && routePoint.lat < maxLat && routePoint.lat > minLat ) {
+
+          //  route point is within tracks bounding box
+         track.lngLat.forEach( (tp, itp) => {
+
+            const trackPoint = track.point(itp);
+
+            let d = Math.round(p2p(routePoint, trackPoint)*100)/100;
+            // if dist < tol then update matched arrays
+            if ( d < MATCH_TOLERANCE ) {
+
+              // thisTime = new Date(tp.time) / 1000;
+              // if ( lastTime !== '' ) {
+              //   // been through loop before, so mush be a previous point to compare with
+              //   this.params.time[irp][i] = thisTime - lastTime;
+              // }
+              const i = this.params.tracks[irp].indexOf(track.pathId);
+
+              if ( i === -1 ) {
+                // if track is not found on current point, push it to array
+                this.params.tracks[irp].push(track.pathId);
+                this.params.nmatch[irp]++;
+                this.params.dist[irp].push(d);
+
+              } else {
+                // if track is found on current point, update distance in array
+                this.params.dist[irp][i] = d < this.params.dist[irp][i] ? d : this.params.dist[irp][i];
+              }
+
+              // if track is not found in overall tracks list, push it
+              if ( this.params.trksList.indexOf(track.pathId) === -1 ) {
+                this.params.trksList.push(track.pathId);
+              }
+            }
+            // } else { // if ( dist ...
+              // lastTime = '';
+            // }
+            // lastTime = thisTime;
+          }) //track.forEach
+
+        } // if ( rtePt[0] ...
+
+      }) // rteCoords.forEach
+
+    }) // t.forEach
+    this.matchStats();
+  }
 
 }
 
 
+class NewMatch extends Match {
+
+  constructor(rte, trks) {
+
+    //set up blank match object
+    const mObj = {
+      routeId: rte._id,
+      bbox: rte.bbox,
+      params: {
+        trksList: [],
+        nmatch: Array.from(rte.geometry.coordinates, x => 0),
+        tracks: Array.from(rte.geometry.coordinates, x => []),
+        dist: Array.from(rte.geometry.coordinates, x => []),
+        // time: Array.from(rte.geometry.coordinates, x => []),
+        // elev: Array.from(rte.geometry.coordinates, x => []),
+      }
+    }
+
+    super(rte, mObj);
+
+    // create tracks paths
+
+    const tracks = this.createTrackPaths(trks);
+    this.analyseMatch(tracks);
+
+  }
+
+
+
+}
+
+
+
+/**
+   * Activate route matching logic
+   */
+
+
 module.exports = {
-  Match
+  Match,
+  NewMatch
 };
+
+
+
+
+

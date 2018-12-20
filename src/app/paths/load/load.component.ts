@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { DataService } from '../../data.service';
 import { ActivatedRoute } from '@angular/router';
 import { Router } from '@angular/router';
+import { HttpService } from '../../http.service';
 
 @Component({
   selector: 'app-load',
@@ -18,7 +19,7 @@ export class LoadComponent implements OnInit {
   private singleOrBatch: String;
 
   constructor(
-    private http: HttpClient,
+    private httpService: HttpService,
     private dataService: DataService,
     private activatedRouter: ActivatedRoute,
     private router: Router
@@ -46,11 +47,9 @@ export class LoadComponent implements OnInit {
 
     if ( this.pathType === 'route' ) {
 
-      this.http.post('http://localhost:3000/loadroutes', fileData)
-        .subscribe(incomingData => {
-          document.documentElement.style.cursor = 'default';
-          this.dataService.fromLoadToMap.emit(incomingData);
-
+      this.httpService.importRoute(fileData).subscribe( (dataIn) => {
+        document.documentElement.style.cursor = 'default';
+        this.dataService.fromLoadToMap.emit(dataIn);
       });
 
       this.router.navigate(['paths', this.pathType, '-1']);
@@ -59,8 +58,7 @@ export class LoadComponent implements OnInit {
 
     if ( this.pathType === 'track' ) {
 
-      this.http.post('http://localhost:3000/loadtracks/' + this.singleOrBatch, fileData)
-        .subscribe(incomingData => {
+      this.httpService.importTracks(fileData, this.singleOrBatch).subscribe( (dataIn) => {
 
           if ( this.singleOrBatch === 'batch' ) {
             document.documentElement.style.cursor = 'default';
@@ -70,12 +68,11 @@ export class LoadComponent implements OnInit {
 
           if ( this.singleOrBatch === 'single' ) {
             document.documentElement.style.cursor = 'default';
-            this.dataService.fromLoadToMap.emit(incomingData);
+            this.dataService.fromLoadToMap.emit(dataIn);
           }
       });
 
       if ( this.singleOrBatch === 'batch' ) {
-        // this.router.navigate(['/routes', this.pathType]);
       } else {
         this.router.navigate(['/paths', this.pathType, '-1']);
       }

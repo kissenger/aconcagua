@@ -11,8 +11,24 @@ export class HttpService {
   private savePathUrl = 'http://localhost:3000/save-path/';
   private getPathsListUrl = 'http://localhost:3000/get-paths-list/';
   private getPathAutoUrl = 'http://localhost:3000/get-path-auto/';
+  private getMatchedTracksUrl = 'http://localhost:3000/get-matched-tracks/';
+  private importRouteUrl = 'http://localhost:3000/import-route/';
+  private importTracksUrl = 'http://localhost:3000/import-tracks/';
 
   constructor( private http: HttpClient ) {}
+
+  importRoute(formData) {
+    return this.http.post<any>(this.importRouteUrl, formData);
+  }
+
+  importTracks(formData, sob) {
+    return this.http.post<any>(this.importTracksUrl + sob, formData);
+  }
+
+  getMatchedTracks(routeId) {
+    console.log('now');
+    return this.http.get<any>(this.getMatchedTracksUrl + routeId);
+  }
 
   getPathById(type, id, returnIdOnly) {
     return this.http.get<any>(this.getPathByIdUrl + type + '/' + id + '/' + returnIdOnly);

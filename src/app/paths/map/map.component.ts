@@ -22,7 +22,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
   public httpClient: any;
   public pathType: String;
-  public pathID: String;
+  public pathId: String;
   public path: any;
 
   public map: google.maps.Map;
@@ -71,43 +71,46 @@ export class MapComponent implements OnInit, OnDestroy {
 
       // get url params
       this.pathType = params.type;
-      this.pathID = params.id;
+      this.pathId = params.id;
 
       // Determine page type
       this.isReviewPage = params.id === '-1' ? true : false;
       document.documentElement.style.cursor = 'wait';
 
-      if ( typeof this.pathID !== 'undefined') {
+      if ( typeof this.pathId !== 'undefined') {
 
         if ( !this.isReviewPage ) {
           // this is NOT review page
 
-          if ( !this.subsActive ) {
-            // only request data i=f existing subs in not still active
-
-            this.httpService.getPathById(this.pathType, this.pathID, false)
+//           if ( !this.subsActive ) {
+//             // only request data if existing subs in not still active
+console.log('rbivbiure');
+            this.httpService.getPathById(this.pathType, this.pathId, false)
               .subscribe( (result) => {
-                this.path = result['geoJson'];
+                this.path = result.geoJson;
+                if ( this.pathType === 'route' ) {
+                  this.binary = result.geoBinary;
+                  this.contour = result.geoContour;
+                  console.log('beuifb1uoifbuoifbuowbfoiu3q');
+                  this.httpService.getMatchedTracks(this.pathId).subscribe( (r) => {
+                    this.processMatchData(r);
+                  });
+                }
                 this.loadMap();
                 document.documentElement.style.cursor = 'default';
             });
 
-          }
 
-          if ( this.pathType === 'route' ) {
-            // this is a route
+          // if ( this.pathType === 'route' ) {
+          //   // this is a route
+          //   if ( !this.subsActive ) {
 
-            if ( !this.subsActive ) {
-              this.httpService.matchFromDb(this.pathID)
-                .subscribe( (result) => {
-                  this.processMatchData(result);
-                });
 
-            } else {
-              this.loadMap();
-            }
-            document.documentElement.style.cursor = 'default';
-          }
+          //   } else {
+          //     this.loadMap();
+          //   }
+          //   document.documentElement.style.cursor = 'default';
+          // }
 
         } else {
         // this is review page
@@ -115,7 +118,7 @@ export class MapComponent implements OnInit, OnDestroy {
           this.myService = this.dataService.fromLoadToMap.
             subscribe( (result) => {
               this.path = result['geoJson'];
-              this.pathID = this.path.features[0]._id;
+              this.pathId = this.path.features[0].properties.pathId;
               this.loadMap();
               document.documentElement.style.cursor = 'default';
           });
@@ -131,6 +134,8 @@ export class MapComponent implements OnInit, OnDestroy {
   loadMap() {
 
     console.log(this.path);
+    console.log(this.binary);
+    console.log(this.contour);
 
     // const mapService = this.mapService;
     this.map = new google.maps.Map(document.getElementById('map'), {
@@ -183,7 +188,7 @@ export class MapComponent implements OnInit, OnDestroy {
     });
 
     // determine if data is available and act accordingly
-    if ( this.pathID !== '0' ) {
+    if ( this.pathId !== '0' ) {
 
       const that = this;
       // plot route data
@@ -199,7 +204,7 @@ export class MapComponent implements OnInit, OnDestroy {
       });
 
       // set all paths to unclicked
-      this.path.features.map(x => x.properties.isClicked = false);
+      // this.path.features.map(x => x.isClicked = false);
 
       // set style of plotted paths
       this.map.data.setStyle( (feature) => {
@@ -243,12 +248,12 @@ export class MapComponent implements OnInit, OnDestroy {
     this.pushControls();
 
     // emit data to data component
-    if ( this.pathID !== '0' ) {
+    const dataToEmit = this.path.features[0].properties;
+    if ( this.pathId !== '0' ) {
       this.dataService.fromMapToData.emit(
-        // this.getDataPackage(this.path.features[0])
-        this.path.features[0]
+        dataToEmit
       );
-      this.dataService.storeData(this.path.features[0]);
+      this.dataService.storeData(dataToEmit);
     }
 
 
@@ -308,11 +313,11 @@ export class MapComponent implements OnInit, OnDestroy {
                               { text: 'Binary',
                                 rollOver: 'Show binary plot',
                                 isChecked: false,
-                                isEnabled: false },
+                                isEnabled: true },
                               { text: 'Contour',
                                 rollOver: 'Show contour plot',
                                 isChecked: false,
-                                isEnabled: false }
+                                isEnabled: true }
                             ],
                           clickFunction: this.radioClick.bind(this)
                         };
@@ -646,7 +651,7 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   pathDelete() {
-    this.httpService.deletePath(this.pathType, this.pathID)
+    this.httpService.deletePath(this.pathType, this.pathId)
       .subscribe( () => {
         this.router.navigate(['paths', this.pathType]);
       });
@@ -655,7 +660,7 @@ export class MapComponent implements OnInit, OnDestroy {
   zoomIn() {
      // needs reviewing:
     // for (const path of this.pathAsGeoJson.features) {
-    //   if (path.properties.isClicked) {
+    //   if (path.isClicked) {
     //     this.map.fitBounds({
     //         north: path.bbox[3],
     //         south: path.bbox[1],
@@ -726,19 +731,24 @@ export class MapComponent implements OnInit, OnDestroy {
       payload['newDesc'] = descElement.value;
     }
 
-    if ( this.pathType === 'route' ) {
-      // Return changed values to backend and set saved flag to true
-      this.subsActive = true;
-      this.setInputDisabled(<HTMLElement>document.getElementById('Tracks'));
-      this.setInputDisabled(<HTMLElement>document.getElementById('Binary'));
-      this.setInputDisabled(<HTMLElement>document.getElementById('Contour'));
-      this.httpService.matchFromLoad(this.pathID).subscribe( (dataIn) => {
-        this.processMatchData(dataIn);
-      });
-    }
+    // if ( this.pathType === 'route' ) {
+    //   // Return changed values to backend and set saved flag to true
+    //   this.subsActive = true;
+    //   this.setInputDisabled(<HTMLElement>document.getElementById('Tracks'));
+    //   this.setInputDisabled(<HTMLElement>document.getElementById('Binary'));
+    //   this.setInputDisabled(<HTMLElement>document.getElementById('Contour'));
+    //   this.httpService.matchFromLoad(this.pathId).subscribe( (dataIn) => {
+    //     this.processMatchData(dataIn);
+    //   });
+    // }
 
-    this.httpService.savePath(this.pathType, this.pathID, payload).subscribe( ( result ) => {
-      this.router.navigate(['paths', this.pathType, this.pathID]);
+    this.httpService.savePath(this.pathType, this.pathId, payload).subscribe( (result) => {
+      console.log(result);
+      // this.subsActive = true;
+      this.router.navigate(['paths', this.pathType, this.pathId]);
+      // this.httpService.getMatchedTracks(this.pathId).subscribe( (r) => {
+      //   this.processMatchData(r);
+      // });
     });
 
   }
@@ -747,29 +757,19 @@ processMatchData(d) {
   // called by onSave() and ngInit()
   // sorts incoming data and enables buttons
 
-  this.binary = d['geoBinary'];
-  this.contour = d['geoContour'];
   this.tracks = d['geoTracks'];
-  // this.match = d['geoMatch'];
+  console.log(this.tracks);
 
   this.subsActive = false;
-
-  console.log(this.binary);
-  console.log(this.tracks);
-  console.log(this.contour);
-  // console.log(this.match);
-
   this.timer = setInterval( () => {
     this.setInputEnabled(<HTMLElement>document.getElementById('Tracks'));
-    this.setInputEnabled(<HTMLElement>document.getElementById('Binary'));
-    this.setInputEnabled(<HTMLElement>document.getElementById('Contour'));
   }, 200);
 
   // emit data to data component
-  if ( this.pathID !== '0' ) {
-    this.dataService.fromMapToData.emit({
-      'stats': this.binary.stats,
-    });
+  if ( this.pathId !== '0' ) {
+    // this.dataService.fromMapToData.emit({
+    //   // 'stats': this.binary.stats,
+    // });
   }
 
 }

@@ -38,7 +38,7 @@ export class DetailComponent implements OnInit, OnDestroy {
       const dataFromMap = this.dataService.getStoredData();
 
 
-      this.stats = dataFromMap.pathData.properties.stats;
+      this.stats = dataFromMap.pathData.stats;
       console.log(this.stats);
       this.matchStats = dataFromMap.matchData;
       this.showTime = this.stats.startTime.length > 1 ? true : false;

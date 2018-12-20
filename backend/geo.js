@@ -19,7 +19,10 @@ const Point = require('./_Point.js').Point;
 function p2p(p1, p2) {
 
   if ( !(p1 instanceof Point) || !(p2 instanceof Point) ) {
-    console.log("Error from p2p: arguments should be of Points class");
+    console.log(p1);
+    console.log(p1 instanceof Point);
+    console.log(p1 instanceof Point);
+    console.log("Error from p2p: arguments should be of Point class");
     return 0;
   }
 
