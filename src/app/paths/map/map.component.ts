@@ -273,7 +273,7 @@ export class MapComponent implements OnInit, OnDestroy {
                           text: 'Create',
                           rollOver: 'Create a new route',
                           clickFunction: this.createNew.bind(this),
-                          isEnabled: false};
+                          isEnabled: true};
     const btnZoom     = { type: 'button',
                           text: 'Zoom In',
                           rollOver: 'Zoom in on selected track',
