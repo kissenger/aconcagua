@@ -210,25 +210,27 @@ class Path  {
          * Mile and KM splits
          * Create new arrays containing point number at milestone, and pace for last segment
          */
-        if ( isTime ) {
 
           if ( distance / (1000 * (kmSplits.length + 1)) >= 1 || index === this.pathSize) {
             // first point past finished km
-            const dt = (duration - lastKmStartTime) / 60;     //time in mins
-            const dd = (distance - lastKmStartDist) / 1000;
-            kmSplits.push([index, dt/dd]);
+            if ( isTime ) {
+              var dt = (duration - lastKmStartTime) / 60;     //time in mins
+              var dd = (distance - lastKmStartDist) / 1000;
+            }
+            kmSplits.push([index, isTime ? dt/dd : 0]);
             lastKmStartTime = duration;
             lastKmStartDist = distance;
           }
           if ( distance * KM_TO_MILE / (1000 * (mileSplits.length + 1)) >= 1 || index === this.pathSize) {
-            const dt = (duration - lastMileStartTime) / 60;
-            const dd = (distance - lastMileStartDist) / 1000 * KM_TO_MILE;
-            mileSplits.push([index, dt/dd]);
+            if ( isTime ) {
+              var dt = (duration - lastMileStartTime) / 60;
+              var dd = (distance - lastMileStartDist) / 1000 * KM_TO_MILE;
+            }
+            mileSplits.push([index, isTime ? dt/dd : 0]);
             lastMileStartTime = duration;
             lastMileStartDist = distance;
           }
 
-        }
 
          /**
          * Elevation tracking and analyse gradient and hills

@@ -35,20 +35,9 @@ export class SummaryComponent implements OnInit, OnDestroy {
     this.myService = this.dataService.fromMapToData.
       subscribe( (dataFromMap) => {
 
-        // if ( 'category' in dataFromMap ) {
+        this.pathName = dataFromMap.path.name;
+        this.pathDescription = typeof dataFromMap.path.description === 'undefined' ? '(No description)' : dataFromMap.path.description;
 
-          console.log(dataFromMap);
-
-          // this.stats = dataFromMap.stats;
-          // this.showTime = this.stats.startTime.length > 1 ? true : false;
-          // this.showElev = this.stats.ascent !== 0 ? true : false;
-
-          this.pathName = dataFromMap.name;
-          this.pathDescription = typeof dataFromMap.description === 'undefined' ? '(No description)' : dataFromMap.description;
-
-        // } else {
-
-        // }
       }); // subscribe
 
   }

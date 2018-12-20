@@ -34,6 +34,7 @@ export class MapComponent implements OnInit, OnDestroy {
   public tracks;
   public contour;
   public match;
+  public markers = [];
 
   public isReviewPage: Boolean;
   public isMatchPage: Boolean;
@@ -315,12 +316,18 @@ export class MapComponent implements OnInit, OnDestroy {
                             ],
                           clickFunction: this.radioClick.bind(this)
                         };
-    const cbTracks    = { type: 'check',
-                          text: 'Tracks',
-                          rollOver: 'Show tracks plot',
-                          clickFunction: this.cbShowTracks.bind(this),
-                          isEnabled: false,
-                          isChecked: false};
+    const cbTracks      = { type: 'check',
+                            text: 'Tracks',
+                            rollOver: 'Show tracks plot',
+                            clickFunction: this.cbShowTracks.bind(this),
+                            isEnabled: false,
+                            isChecked: false};
+    const cbMileMarkers = { type: 'check',
+                            text: 'Mile Markers',
+                            rollOver: 'Display mile markers',
+                            clickFunction: this.cbShowMileMarkers.bind(this),
+                            isEnabled: true,
+                            isChecked: false};
 
     const ctrlsTopLeft = [];
     const ctrlsMiddleLeft = [];
@@ -335,10 +342,11 @@ export class MapComponent implements OnInit, OnDestroy {
       // not a review page
       if ( this.pathType === 'route') {
         ctrlsTopLeft.push(btnDelete, btnLoad, btnCreate, btnZoom, btnFit);
-        ctrlsMiddleLeft.push(radioBtns, cbTracks);
+        ctrlsMiddleLeft.push(radioBtns, cbTracks, cbMileMarkers);
       } else
       if ( this.pathType === 'track') {
         ctrlsTopLeft.push(btnDelete, btnLoad, btnBatch, btnZoom, btnFit);
+        ctrlsMiddleLeft.push(cbMileMarkers);
       }
     }
 
@@ -504,6 +512,35 @@ export class MapComponent implements OnInit, OnDestroy {
 
   }
 
+  cbShowMileMarkers() {
+    const cb = <HTMLInputElement>document.getElementById('inputMile Markers');
+
+    if ( cb.checked === true ) {
+      this.path.features[0].properties.stats.kmSplits.forEach( (c, i) => {
+        const coord = this.path.features[0].geometry.coordinates[c[0]];
+          this.markers.push(new google.maps.Circle({
+            strokeColor: '#FF0000',
+            strokeOpacity: 0.8,
+            strokeWeight: 0,
+            fillColor: '#FF0000',
+            fillOpacity: 0.5,
+            map: this.map,
+            center: {'lat': coord[1], 'lng': coord[0]},
+            radius: 100
+          }));
+        // this.markers.push(new google.maps.Marker({
+        //   position: {'lat': coord[1], 'lng': coord[0]},
+        //   label: (i + 1).toString(),
+        //   map: this.map
+        // }) );
+      });
+    } else {
+
+      this.markers.forEach( (m) => { m.setMap(null); });
+    }
+
+  }
+
   cbShowTracks () {
     const cb = <HTMLInputElement>document.getElementById('inputTracks');
 
@@ -512,6 +549,7 @@ export class MapComponent implements OnInit, OnDestroy {
         ftr.id = 'tracks-' + i;
         this.map.data.addGeoJson(ftr);
       });
+
 
     /**
      * DEBUG BLOCK
