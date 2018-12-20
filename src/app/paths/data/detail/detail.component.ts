@@ -20,10 +20,11 @@ export class DetailComponent implements OnInit, OnDestroy {
 
   public myService;
 
-  public stats;
+  public pathStats;
   public matchStats;
-  public showTime;
-  public showElev;
+  public showTime = false;
+  public showElev = false;
+  public showMatchStats = false;
 
   constructor(
     private dataService: DataService,
@@ -32,19 +33,21 @@ export class DetailComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
 
-    // this.myService = this.dataService.fromMapToData.
-    // subscribe( (dataFromMap) => {
+    // get data from map
+    const dataFromMap = this.dataService.getStoredData();
+    console.log(dataFromMap);
 
-      const dataFromMap = this.dataService.getStoredData();
+    // path data
+    this.pathStats = dataFromMap.path.stats;
+    if ( this.pathStats.startTime ) { this.showTime = this.pathStats.startTime.length > 1 ? true : false; }
+    this.showElev = this.pathStats.ascent !== 0 ? true : false;
 
+    // match data
+    this.matchStats = dataFromMap.match;
+    console.log(this.matchStats);
+    console.log(!!this.matchStats);
 
-      this.stats = dataFromMap.pathData.stats;
-      console.log(this.stats);
-      this.matchStats = dataFromMap.matchData;
-      this.showTime = this.stats.startTime.length > 1 ? true : false;
-      this.showElev = this.stats.ascent !== 0 ? true : false;
-
-    // }); // subscribe
+    this.showMatchStats = this.matchStats ? true : false;
 
   }
 

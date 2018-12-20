@@ -82,35 +82,23 @@ export class MapComponent implements OnInit, OnDestroy {
         if ( !this.isReviewPage ) {
           // this is NOT review page
 
-//           if ( !this.subsActive ) {
-//             // only request data if existing subs in not still active
-console.log('rbivbiure');
             this.httpService.getPathById(this.pathType, this.pathId, false)
               .subscribe( (result) => {
+
                 this.path = result.geoJson;
                 if ( this.pathType === 'route' ) {
+
                   this.binary = result.geoBinary;
                   this.contour = result.geoContour;
-                  console.log('beuifb1uoifbuoifbuowbfoiu3q');
+
                   this.httpService.getMatchedTracks(this.pathId).subscribe( (r) => {
                     this.processMatchData(r);
                   });
+
                 }
                 this.loadMap();
                 document.documentElement.style.cursor = 'default';
             });
-
-
-          // if ( this.pathType === 'route' ) {
-          //   // this is a route
-          //   if ( !this.subsActive ) {
-
-
-          //   } else {
-          //     this.loadMap();
-          //   }
-          //   document.documentElement.style.cursor = 'default';
-          // }
 
         } else {
         // this is review page
@@ -247,13 +235,19 @@ console.log('rbivbiure');
     // define controls
     this.pushControls();
 
+
     // emit data to data component
-    const dataToEmit = this.path.features[0].properties;
     if ( this.pathId !== '0' ) {
-      this.dataService.fromMapToData.emit(
-        dataToEmit
-      );
-      this.dataService.storeData(dataToEmit);
+
+      const emitData = {
+        path: this.path.features[0].properties,
+        match: this.binary ? this.binary.stats : 0
+      };
+
+      this.dataService.fromMapToData.emit(emitData);
+
+      this.dataService.storeData(emitData);
+
     }
 
 
@@ -731,31 +725,13 @@ console.log('rbivbiure');
       payload['newDesc'] = descElement.value;
     }
 
-    // if ( this.pathType === 'route' ) {
-    //   // Return changed values to backend and set saved flag to true
-    //   this.subsActive = true;
-    //   this.setInputDisabled(<HTMLElement>document.getElementById('Tracks'));
-    //   this.setInputDisabled(<HTMLElement>document.getElementById('Binary'));
-    //   this.setInputDisabled(<HTMLElement>document.getElementById('Contour'));
-    //   this.httpService.matchFromLoad(this.pathId).subscribe( (dataIn) => {
-    //     this.processMatchData(dataIn);
-    //   });
-    // }
-
     this.httpService.savePath(this.pathType, this.pathId, payload).subscribe( (result) => {
-      console.log(result);
-      // this.subsActive = true;
       this.router.navigate(['paths', this.pathType, this.pathId]);
-      // this.httpService.getMatchedTracks(this.pathId).subscribe( (r) => {
-      //   this.processMatchData(r);
-      // });
     });
 
   }
 
 processMatchData(d) {
-  // called by onSave() and ngInit()
-  // sorts incoming data and enables buttons
 
   this.tracks = d['geoTracks'];
   console.log(this.tracks);
@@ -764,13 +740,6 @@ processMatchData(d) {
   this.timer = setInterval( () => {
     this.setInputEnabled(<HTMLElement>document.getElementById('Tracks'));
   }, 200);
-
-  // emit data to data component
-  if ( this.pathId !== '0' ) {
-    // this.dataService.fromMapToData.emit({
-    //   // 'stats': this.binary.stats,
-    // });
-  }
 
 }
 

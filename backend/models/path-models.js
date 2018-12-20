@@ -22,7 +22,6 @@ const pathSchema = mongoose.Schema({
   },
   stats: {
     bbox: {type: [Number]},
-    startTime: {type: String},
     duration: {type: Number},
     distance: {type: Number},
     pace: {type: Number},

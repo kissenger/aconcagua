@@ -15,9 +15,8 @@ class GeoJson {
     let outerBbox = [ 180, 90, -180, -90 ]; //minLng, minLat, maxLng, maxLat
 
     pathArray.forEach ((p, i) => {
+
       const bbox = [p.stats.bbox[0], p.stats.bbox[1], p.stats.bbox[2], p.stats.bbox[3]];
-      this.stats = p.stats;
-      this.stats.startTime = p.startTime;
 
       path.push({
         type: 'Feature',
@@ -27,6 +26,7 @@ class GeoJson {
           coordinates: p.geometry.coordinates
         },
         properties: {
+          startTime: p.startTime,
           userId: p.userId,
           pathId: p._id,
           creationDate: p.creationDate,
@@ -35,7 +35,7 @@ class GeoJson {
           color: getRandomColour(i),
           category: p.category,
           name: p.name.length === 0 ? p.category + ' ' + p.pathType : p.name,
-          stats: this.stats
+          stats: {...p.stats, ...{startTime: p.startTime}}
         },
       });
 

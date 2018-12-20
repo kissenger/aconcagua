@@ -183,7 +183,7 @@ app.post('/save-path/:type/:id',  auth.verifyToken, (req, res) => {
   // query database, updating change data and setting isSaved to true
   pathModel
     .updateOne(condition, {$set: filter}, {writeConcern: {j: true}})
-    .then( () => {
+    .then( (document) => {
       // console.log(document);
 
       if ( req.params.type === 'track' ) {
@@ -424,11 +424,12 @@ function getMatchFromImportRoute(routeId) {
         const match = new NewMatch(route, tracks);
 
         // save to db
-        MongoMatch.Match.create(match);
-        resolve({
-          'geoBinary': match.plotBinary(),
-          'geoContour': match.plotContour(),
-        })
+        MongoMatch.Match.create(match).then( () => {
+          resolve({
+            'geoBinary': match.plotBinary(),
+            'geoContour': match.plotContour(),
+          })
+        });
       })
     })
   })
@@ -450,17 +451,16 @@ function getMatchFromDb(route) {
 
       // check for no result
       if ( match.length === 0 ) {
-        var thisMatch = new NewMatch(route, match[0]);
+        resolve();
       }
       else {
         var thisMatch = new Match(route, match[0]);
+        resolve({
+          'geoContour': thisMatch.plotContour(),
+          'geoBinary': thisMatch.plotBinary()
+        });
       }
 
-      // create match object and resolve promise
-      resolve({
-        'geoContour': thisMatch.plotContour(),
-        'geoBinary': thisMatch.plotBinary()
-      });
     })
   })
 }
@@ -603,6 +603,7 @@ app.get('/get-matched-tracks/:routeId', auth.verifyToken, (req, res) => {
   // get trksList from required route
   MongoMatch.Match.find( {'routeId': req.params.routeId }, {'params.trksList': 1} ).then( (matches) => {
 
+    console.log('get matched tracks:' + matches);
     // retrieve tracks from db
     MongoPath.Tracks.find( { '_id': { $in: matches[0].params.trksList } } ).then( (tracks) => {
 

@@ -1,13 +1,10 @@
 const contourPalette = require('./utils.js').contourPalette;
 const p2p = require('./geo.js').p2p;
-const Point = require('./_Point.js').Point;
 const Path = require('./_Path.js').Path;
 
 GAP_TOLERANCE = 500;  // in metres
 FUDGE_FACTOR = 1.0001;
 MATCH_TOLERANCE = 20;  // in metres
-
-
 
 
 class Match {
@@ -22,9 +19,7 @@ class Match {
       this.route = new Path('', rte.geometry.coordinates)
     }
     this.params = matchObject.params;
-    console.log('$%^&*');
-    console.log(this.stats);
-    if (this.stats) this.stats = matchObject.stats;
+    if (!this.stats) this.stats = matchObject.stats;
 
     // create a route path
 
@@ -326,7 +321,8 @@ class NewMatch extends Match {
         dist: Array.from(rte.geometry.coordinates, x => []),
         // time: Array.from(rte.geometry.coordinates, x => []),
         // elev: Array.from(rte.geometry.coordinates, x => []),
-      }
+      },
+      stats: {}
     }
 
     super(rte, mObj);

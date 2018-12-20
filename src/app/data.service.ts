@@ -10,24 +10,18 @@ import { EventEmitter, Injectable } from '@angular/core';
 @Injectable()
 export class DataService {
 
-  private pathData;
-  private matchData;
+  private storedData;
 
   // data emitters
   fromLoadToMap = new EventEmitter();
   fromMapToData = new EventEmitter();
 
   storeData(data) {
-
-      this.pathData = data;
-      console.log(data);
+      this.storedData = data;
   }
 
   getStoredData() {
-    return {
-      'pathData': this.pathData,
-      'matchData': this.matchData
-    };
+    return this.storedData;
   }
 
 
