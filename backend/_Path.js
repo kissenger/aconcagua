@@ -273,6 +273,7 @@ class Path  {
             // slopeType has not been initialised: do so
             lastSlopeType = thisSlopeType;
             e0 = thisFiltElev;
+            gradM = 0;
 
           } else {
             // slopeType exists
