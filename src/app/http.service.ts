@@ -14,9 +14,18 @@ export class HttpService {
   private getMatchedTracksUrl = 'http://localhost:3000/get-matched-tracks/';
   private importRouteUrl = 'http://localhost:3000/import-route/';
   private importTracksUrl = 'http://localhost:3000/import-tracks/';
+  private saveCreatedRouteUrl = 'http://localhost:3000/save-created-route/';
+  public exportPathUrl = 'http://localhost:3000/export-path/';
 
   constructor( private http: HttpClient ) {}
 
+  exportPath(type, id) {
+    return this.http.get<any>(this.exportPathUrl + type + '/' + id);
+  }
+
+  saveCreatedRoute(pathData) {
+    return this.http.post<any>(this.saveCreatedRouteUrl, pathData);
+  }
   importRoute(formData) {
     return this.http.post<any>(this.importRouteUrl, formData);
   }
@@ -26,7 +35,6 @@ export class HttpService {
   }
 
   getMatchedTracks(routeId) {
-    console.log('now');
     return this.http.get<any>(this.getMatchedTracksUrl + routeId);
   }
 

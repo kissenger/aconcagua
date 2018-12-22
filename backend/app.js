@@ -8,10 +8,13 @@ const bodyParser = require('body-parser');
 // const filefun = require('./filefun.js');
 const Match = require('./_Match.js').Match;
 const NewMatch = require('./_Match.js').NewMatch;
+const Route = require('./_Path').Route;
+const Path = require('./_Path').Path;
 const GeoJson = require('./_GeoJson.js').GeoJson;
 const ListData = require('./_ListData.js').ListData;
 const auth = require('./auth.js');
-const gpx = require('./gpx.js');
+const writeGpx = require('./gpx.js').writeGpx;
+const readGpx = require('./gpx.js').readGpx;
 
 // Mongoose setup ... mongo password: p6f8IS4aOGXQcKJN
 const mongoose = require('mongoose');
@@ -84,7 +87,7 @@ app.post('/import-tracks/:singleOrBatch', auth.verifyToken, upload.array('filena
 
   // read data into buffer and interprete gpx
   const gpxBuffer = req.files.map(a => a.buffer.toString());
-  let paths = gpxBuffer.map(gpx.toPath);
+  let paths = gpxBuffer.map(readGpx);
 
   if ( req.params.singleOrBatch === 'batch' ) {
     MongoPath.Tracks
@@ -134,17 +137,12 @@ app.post('/import-route/', auth.verifyToken, upload.single('filename'), (req, re
   }
 
   // Read file data & convert to geojson format
-  const path = gpx.toPath(req.file.buffer.toString()).mongoFormat(userId, false);
+  const path = readGpx(req.file.buffer.toString()).mongoFormat(userId, false);
   path.userId = userId;  // inject userID into path object
 
   // Save route into database
   MongoPath.Routes.create(path).then( documents => {
-
     res.status(201).json({geoJson: new GeoJson(documents)});
-    // let retRoute= {geoJson: new GeoJson(documents)};
-    // getMatchFromImportRoute(documents).then( (retMatch) => {
-      // res.status(201).json({...retRoute, ...retMatch});
-    // })
   })
 
 
@@ -370,6 +368,60 @@ app.get('/get-path-auto/:type', auth.verifyToken, (req, res) => {
         res.status(201).json({
           'id': documents.length === 0 ? 0 : documents[0]._id });
     });
+
+})
+
+
+/*****************************************************************
+ * Save a user-created route to db
+ *
+ *
+ *
+ *****************************************************************/
+app.post('/save-created-route/', auth.verifyToken, (req, res) => {
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  // Read file data & convert to geojson format
+  const path = new Route(req.body.name, req.body.description, req.body.geometry.coordinates);
+  console.log(path.mongoFormat());
+  MongoPath.Routes.create(path.mongoFormat(userId, true)).then( (document) => {
+    res.status(201).json({pathId: document._id});
+  })
+})
+
+
+
+/*****************************************************************
+ * Export a path to file
+ *
+ *
+ *
+ *****************************************************************/
+app.get('/export-path/:type/:id', auth.verifyToken, (req, res) => {
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  // Read file data & convert to geojson format
+
+
+  MongoPath.Routes.find({userId: userId, _id: req.params.id}).then(document => {
+
+    console.log(document);
+    let route = new Path(document[0].geometry.coordinates, document[0].params.elev);
+    writeGpx(route).then(
+      res.status(201).json({response: 'write ok!'})
+    );
+
+  });
 
 })
 
@@ -603,14 +655,17 @@ app.get('/get-matched-tracks/:routeId', auth.verifyToken, (req, res) => {
   // get trksList from required route
   MongoMatch.Match.find( {'routeId': req.params.routeId }, {'params.trksList': 1} ).then( (matches) => {
 
-    console.log('get matched tracks:' + matches);
+    // console.log('get matched tracks:' + matches);
     // retrieve tracks from db
-    MongoPath.Tracks.find( { '_id': { $in: matches[0].params.trksList } } ).then( (tracks) => {
+    if ( matches.length === 0) {
+      // no matches
+    } else {
+      // there are matches in the db
+      MongoPath.Tracks.find( { '_id': { $in: matches[0].params.trksList } } ).then( (tracks) => {
+        res.status(201).json({'geoTracks': new GeoJson(tracks)})
+      })
+    }
 
-      // send to front end
-      res.status(201).json({'geoTracks': new GeoJson(tracks)})
-
-    })
   })
 })
 

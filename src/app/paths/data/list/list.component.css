@@ -1,13 +1,15 @@
 
 
 .container {
-  height: 450px;
+  height: 60vh;
   overflow-y: auto;
   width: 100%;
   padding: 0px;
   border-top: 1px solid #DDD2AD;
   border-left: 1px solid #DDD2AD;
   border-right: 1px solid #DDD2AD;
+  /* border: 2px solid purple; */
+  position: relative;
 }
 
 

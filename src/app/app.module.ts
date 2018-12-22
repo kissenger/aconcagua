@@ -9,6 +9,7 @@ import { AuthService } from './auth.service';
 import { DataService } from './data.service';
 import { HttpService } from './http.service';
 import { UtilsService } from './utils.service';
+import { GeoService } from './geo.service';
 import { TokenInterceptorService } from './token-interceptor.service';
 
 // Local imports: components
@@ -24,6 +25,7 @@ import { MapComponent } from './paths/map/map.component';
 import { DataComponent } from './paths/data/data.component';
 import { ListComponent } from './paths/data/list/list.component';
 import { DetailComponent } from './paths/data/detail/detail.component';
+import { CreateDetailComponent } from './paths/data/create-detail/create-detail.component';
 import { SummaryComponent } from './paths/data/summary/summary.component';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
@@ -39,6 +41,7 @@ import { RegisterComponent } from './register/register.component';
     MapComponent,
     DataComponent,
     DetailComponent,
+    CreateDetailComponent,
     SummaryComponent,
     LoadComponent,
     ListComponent,
@@ -57,6 +60,7 @@ import { RegisterComponent } from './register/register.component';
     AuthService,
     HttpService,
     UtilsService,
+    GeoService,
     AuthGuard,
     {
       provide: HTTP_INTERCEPTORS,

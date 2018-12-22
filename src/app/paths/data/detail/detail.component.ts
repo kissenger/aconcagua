@@ -39,6 +39,7 @@ export class DetailComponent implements OnInit, OnDestroy {
 
     // path data
     this.pathStats = dataFromMap.path.stats;
+    console.log(this.pathStats);
     if ( this.pathStats.startTime ) { this.showTime = this.pathStats.startTime.length > 1 ? true : false; }
     this.showElev = this.pathStats.ascent !== 0 ? true : false;
 

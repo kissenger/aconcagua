@@ -1,14 +1,14 @@
-const p2p = require('./geo').p2p;
-// const p2l = require('../geo.js').p2l;
+const p2p = require('./geo.js').p2p;
+const p2l = require('./geo.js').p2l;
 const Point = require('./_Point.js').Point;
 
 
 
 class Path  {
 
-  constructor(name, lngLat, elev, time, heartRate, cadence) {
+  constructor(lngLat, elev, time, heartRate, cadence) {
 
-    this.name = name;
+
     this.lngLat = lngLat;
 
     if (time) {
@@ -24,12 +24,13 @@ class Path  {
       }
     }
 
+    this.pathSize = this.lngLat.length - 1;
+
     if (elev) this.elev = elev;
     if (heartRate) this.heartRate = heartRate;
     if (cadence) this.cadence = cadence;
     // this.category = category();
 
-    this.pathSize = this.lngLat.length - 1;
 
   }
 
@@ -54,6 +55,7 @@ class Path  {
       startTime: this.startTime,
       category: this.category(),
       name: this.name,
+      description: this.description,
       geometry: {
         type: 'LineString',
         coordinates: this.lngLat
@@ -70,7 +72,7 @@ class Path  {
     if ( this.elev ) thisPoint.push(this.elev[index]);
     if ( this.time ) thisPoint.push(this.time[index]);
     if ( this.heartRate ) thisPoint.push(this.heartRate[index]);
-    if ( this.cadence ) thisPoint.push(this.cd[index]);
+    if ( this.cadence ) thisPoint.push(this.cadence[index]);
     return (new Point(thisPoint));
   }
 
@@ -355,8 +357,6 @@ class Path  {
 
   }
 
-}
-
 
 /**
  * function simplifyPath
@@ -364,52 +364,74 @@ class Path  {
  * http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.95.5882&rep=rep1&type=pdf
  */
 
-// function simplify(coords) {
+  simplify() {
 
-//   const tol = 5;                      // tolerance value in metres; the higher the value to greater the simplification
-//   const l_orig = points.length + 1;  // length of array to calculate compression ratio
-//   let i;
-//   let flag = true;
-//   let pd;
+    const TOLERANCE = 10;     // tolerance value in metres; the higher the value to greater the simplification
+    const origLength = this.lngLat.length - 1.
+    let i;
+    let flag = true;
 
-//   // Repeat loop until no nodes are deleted
+    // create array of indexes - what remains at end are points remaining aftre simplification
+    let j = Array.from(this.lngLat, (x, i) => i)
 
-//   while ( flag === true ) {
+    // Repeat loop until no nodes are deleted
+    while ( flag === true ) {
+      i = 0;
+      flag = false;   // if remains true then simplification is complete; loop will break
 
-//     i = 0;
-//     flag = false;   // if remains true then simplification is complete; loop will break
+      while ( i < ( j.length - 2 ) ) {
 
-//     while ( i < ( coords.length - 2 ) ) {
-//       pd = p2l( points[i], points[i+2], points[i+1] );
-//       if ( Math.abs(pd) < tol ) {
-//         points.splice(i+1, 1);
-//         flag = true;
-//       }
-//       i++;
-//     }
+        // find perpendicular distance from line p(i)-p(i+2) to point p(i+1)
+        const pd = p2l( this.point(j[i]), this.point(j[i+2]), this.point(j[i+1]) );
+        if ( Math.abs(pd) < TOLERANCE ) {
+          j.splice(i+1, 1);
+          flag = true;
+        }
+        i++;
 
-//   }
+      }
+    }
 
-//   //compression ration for info only
-//   console.log( 'Simplified path to: ' + ((points.length/l_orig)*100.0).toFixed(1) + '%');
+    // strip out points from class using whats left of j
+    this.lngLat = j.map( x => this.lngLat[x] );
+    if (this.elev.length > 0 ) this.elev = j.map( x => this.elev[x] );
+    if ( this.time.length > 0 ) this.time = j.map( x => this.time[x] );
 
-//   return points;
+    // update path length
+    this.pathSize = this.lngLat.length - 1;
 
-// }
+    //compression ratio for info only
+    console.log( 'Simplified path to: ' + ((j.length/origLength)*100.0).toFixed(1) + '%');
+
+  }
+
+}
+
 
 
 
 class Track extends Path {
-  constructor(name, lngLat, time, heartRate, cadence){
-    super(name, lngLat, time, heartRate, cadence);
+  constructor(name, description, lngLat, elev, time, heartRate, cadence){
+
+    super(lngLat, elev, time, heartRate, cadence);
+
     this.pathType = 'track';
+    this.name = name;
+    this.description = description;
+
   }
 }
 
 class Route extends Path {
-  constructor(name, lngLat, time, heartRate, cadence){
-    super(name, lngLat, time, heartRate, cadence);
+  constructor(name, description, lngLat, elev, time, heartRate, cadence){
+
+    super(lngLat, elev, time, heartRate, cadence);
+
     this.pathType = 'route';
+    this.name = name;
+    this.description = description;
+
+    this.simplify();
 
   }
 }

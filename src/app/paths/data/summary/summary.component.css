@@ -3,6 +3,7 @@
   font-size: 18px;
   font-weight: normal;
   opacity: 1;
+  width: 100%;
   /* padding: 5px; */
 }
 
@@ -11,16 +12,17 @@
   font-size: 14px;
   font-weight: normal;
   opacity: 1;
-  height: 45px;
+  height: 65px;
   overflow: hidden;
+  width: 100%;
   /* margin: 5px; */
 }
 
-.data {
-  color: black;
-  font-size: 12px;
-  font-weight: normal;
-  opacity: 1;
-  /* margin: 5px 0px 0px 0px; */
+.name.input {
+  border: 0px dotted red;
 }
 
+.desc.input {
+  border: 0px dotted red;
+  resize: none;
+}

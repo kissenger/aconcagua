@@ -16,7 +16,7 @@ const appRoutes: Routes = [
   { path: '', component: HomeComponent},
   { path: 'paths/:type', component: PathsComponent, canActivate: [AuthGuard]},
   { path: 'paths/:type/:id', component: PathsComponent, canActivate: [AuthGuard]},
-  { path: 'paths/:type/:id/:match', component: PathsComponent, canActivate: [AuthGuard]},
+  { path: 'paths/:type/:id/:isCreate', component: PathsComponent, canActivate: [AuthGuard]},
   { path: 'load-paths/:type/:singleOrBatch', component: LoadComponent, canActivate: [AuthGuard]},
   { path: 'create-route', component: CreateComponent, canActivate: [AuthGuard]},
   { path: 'register', component: RegisterComponent},

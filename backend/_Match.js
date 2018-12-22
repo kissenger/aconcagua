@@ -16,7 +16,7 @@ class Match {
     if (rte) {
       this.routeId = rte._id,
       this.bbox = rte.stats.bbox,
-      this.route = new Path('', rte.geometry.coordinates)
+      this.route = new Path(rte.geometry.coordinates)
     }
     this.params = matchObject.params;
     if (!this.stats) this.stats = matchObject.stats;
@@ -55,7 +55,7 @@ class Match {
     if ( !(trks instanceof Array) ) trks=[trks];
 
     return trks.map( (t) => {
-      const a = new Path('', t.geometry.coordinates);
+      const a = new Path(t.geometry.coordinates);
       a.injectKeyValuePair({'pathId': t._id});
       a.injectKeyValuePair({'bbox': t.stats.bbox});
       return a;
@@ -206,7 +206,7 @@ class Match {
       isMatched = this.params.nmatch[i] === 0 ? false : true;
       if ( i !== 0 ) {
 
-        const colour = ( isMatched && wasMatched ) ?  '#0000FF' : '#000000';
+        const colour = ( isMatched && wasMatched ) ?  '#0000FF' : '#FF0000';
         if ( i > 1 && colour !== c0 || i === this.route.pathSize ) {
           // colour has changed or its the last data point
           geomArr.push({
@@ -225,7 +225,7 @@ class Match {
       }
       wasMatched = isMatched;
     })
-    console.log(this.stats);
+
     return {
       'type': 'FeatureCollection',
       'plotType': 'binary',
@@ -328,7 +328,6 @@ class NewMatch extends Match {
     super(rte, mObj);
 
     // create tracks paths
-
     const tracks = this.createTrackPaths(trks);
     this.analyseMatch(tracks);
 

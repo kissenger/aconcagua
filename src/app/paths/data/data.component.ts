@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { DataService } from '../../data.service';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 
 @NgModule({
   imports: [
@@ -17,40 +18,65 @@ import { FormsModule } from '@angular/forms';
 
 export class DataComponent implements OnInit, OnDestroy {
 
-  public tabName  = 'left';
+  public activeTab;
+  public nTabs = 2;
+  public tabNameLeft;
+  public tabNameRight;
+  public tabNameSingle;
+  public tabHighlightColour;
+  private paramsSubs;
 
   constructor(
+    private activatedRouter: ActivatedRoute,
     ) {}
 
-  ngOnInit() {
+  ngOnInit(
 
+  ) {
+
+    this.paramsSubs = this.activatedRouter.params.subscribe(params => {
+      if ( params.isCreate === 'true' ) {
+        this.nTabs = 1;
+      } else {
+        this.nTabs = 2;
+      }
+    });
+
+
+    if ( this.nTabs === 1 ) {
+      this.tabNameSingle = 'New Route Detail';
+    } else
+    if ( this.nTabs === 2 ) {
+      this.activeTab = 'left';
+      this.tabNameLeft = 'List';
+      this.tabNameRight = 'Detail';
+    }
+
+    this.tabHighlightColour = '#E9E2CB';
 
 
   } // ngOnInit
 
   menuClick(item) {
 
-    this.tabName = item;
-    const leftDiv = document.getElementById('left');
-    const rightDiv = document.getElementById('right');
+    this.activeTab = item;
 
-    if ( item === 'left' ) {
-      // leftDiv.style.borderBottom = '0px';
-      // leftDiv.style.borderRight = 'transparent 1px solid';
-      // rightDiv.style.borderBottom = '#000000 1px solid';
-      // rightDiv.style.borderLeft = '#000000 1px solid';
-      leftDiv.style.backgroundColor = '#E9E2CB';
-      rightDiv.style.backgroundColor = '#FFFFFF';
-    } else if ( item === 'right' ) {
-      // leftDiv.style.borderBottom = '#000000 1px solid';
-      // leftDiv.style.borderRight = '#000000 1px solid';
-      // rightDiv.style.borderBottom = '0px';
-      // rightDiv.style.borderLeft = 'transparent 1px solid';
-      leftDiv.style.backgroundColor = '#FFFFFF';
-      rightDiv.style.backgroundColor = '#E9E2CB';
+    if ( this.nTabs === 1 ) {
+
+    } else
+
+    if ( this.nTabs === 2 ) {
+      const leftDiv = document.getElementById('left');
+      const rightDiv = document.getElementById('right');
+      if ( item === 'left' ) {
+        leftDiv.style.backgroundColor = this.tabHighlightColour;
+        rightDiv.style.backgroundColor = '#FFFFFF';
+      } else if ( item === 'right' ) {
+        leftDiv.style.backgroundColor = '#FFFFFF';
+        rightDiv.style.backgroundColor = this.tabHighlightColour;
+      }
     }
   }
-
 
   ngOnDestroy() {
 

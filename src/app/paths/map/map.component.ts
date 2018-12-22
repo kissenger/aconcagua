@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { DataService } from '../../data.service';
 import { HttpService } from '../../http.service';
+import { GeoService } from '../../geo.service';
 import { NgControlStatus } from '@angular/forms';
 import { waitForMap } from '@angular/router/src/utils/collection';
 import { Router } from '@angular/router';
@@ -8,6 +9,7 @@ import { ActivatedRoute } from '@angular/router';
 import { TryCatchStmt, BoundDirectivePropertyAst } from '@angular/compiler';
 import { findLast } from '@angular/compiler/src/directive_resolver';
 import { PromiseType } from 'protractor/built/plugins';
+import { mapChildrenIntoArray } from '@angular/router/src/url_tree';
 
 @Component({
   selector: 'app-map',
@@ -19,7 +21,6 @@ export class MapComponent implements OnInit, OnDestroy {
 
   public myService: any;
   public paramSubs: any;
-
   public httpClient: any;
   public pathType: String;
   public pathId: String;
@@ -29,15 +30,20 @@ export class MapComponent implements OnInit, OnDestroy {
   public pathName: String;
   public description: String;
   public routeDataId;
+  public poly: google.maps.Polyline;
+  public pathHistory = [];
+  public createdPath;
 
   public binary;
   public tracks;
   public contour;
   public match;
   public markers = [];
+  public isSnapOn = true;
 
-  public isReviewPage: Boolean;
-  public isMatchPage: Boolean;
+  // public isReviewPage: Boolean;
+  // public isCreatePage: Boolean;
+  public pageType: String;
   public subsActive: Boolean;
 
   public btnLooks = {
@@ -48,17 +54,18 @@ export class MapComponent implements OnInit, OnDestroy {
     'txtDisabled': '#808080'
   };
   public lineStyle = {
-    'binary':  { 'clickable': true, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 1.0 },
-    'contour': { 'clickable': true, 'strokeColor': null, 'strokeWeight': 5, 'strokeOpacity': 1.0 },
-    'route':   { 'clickable': true, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 1.0 },
-    'tracks':  { 'clickable': true, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 0.4 }
+    'binary':  { 'clickable': false, 'strokeColor': null, 'strokeWeight': 5, 'strokeOpacity': 1.0 },
+    'contour': { 'clickable': false, 'strokeColor': null, 'strokeWeight': 5, 'strokeOpacity': 1.0 },
+    'route':   { 'clickable': false, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 1.0 },
+    'tracks':  { 'clickable': false, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 0.4 }
   };
   public timer: NodeJS.Timer;
-  public that = this;
+
 
   constructor(
     private httpService: HttpService,
     private dataService: DataService,
+    private geoService: GeoService,
     private router: Router,
     private activatedRouter: ActivatedRoute
     ) {
@@ -74,13 +81,24 @@ export class MapComponent implements OnInit, OnDestroy {
       this.pathType = params.type;
       this.pathId = params.id;
 
+      if ( params.id === '-1' ) {
+        if ( typeof params.isCreate === 'undefined' ) {
+          this.pageType = 'Review';
+        }
+      } else
+      if ( params.isCreate === 'true' ) {
+        this.pageType = 'Create';
+      } else {
+        this.pageType = 'Normal';
+      }
+
       // Determine page type
-      this.isReviewPage = params.id === '-1' ? true : false;
+
       document.documentElement.style.cursor = 'wait';
 
       if ( typeof this.pathId !== 'undefined') {
 
-        if ( !this.isReviewPage ) {
+        if ( this.pageType === 'Normal' || this.pageType === 'Create') {
           // this is NOT review page
 
             this.httpService.getPathById(this.pathType, this.pathId, false)
@@ -101,7 +119,12 @@ export class MapComponent implements OnInit, OnDestroy {
                 document.documentElement.style.cursor = 'default';
             });
 
-        } else {
+            // if ( this.pageType === 'Create') {
+            //   // let data component know we need to have single column
+            //   this.dataService.fromMapToData.emit({isCreatePage: true});
+            // }
+
+        } else if ( this.pageType === 'Review' ) {
         // this is review page
 
           this.myService = this.dataService.fromLoadToMap.
@@ -125,7 +148,7 @@ export class MapComponent implements OnInit, OnDestroy {
     console.log(this.path);
     console.log(this.binary);
     console.log(this.contour);
-
+    const that = this;
     // const mapService = this.mapService;
     this.map = new google.maps.Map(document.getElementById('map'), {
       styles: [
@@ -155,7 +178,7 @@ export class MapComponent implements OnInit, OnDestroy {
         {'featureType': 'road.highway', 'elementType': 'labels', 'stylers': [{'visibility': 'off'}]},
         {'featureType': 'road.highway.controlled_access', 'elementType': 'geometry', 'stylers': [{'color': '#e98d58'}]},
         {'featureType': 'road.highway.controlled_access', 'elementType': 'geometry.stroke', 'stylers': [{'color': '#db8555'}]},
-        {'featureType': 'road.local', 'stylers': [{'visibility': 'off'}]},
+        {'featureType': 'road.local', 'stylers': [{'visibility': 'on'}]},
         {'featureType': 'road.local', 'elementType': 'labels.text.fill', 'stylers': [{'color': '#806b63'}]},
         {'featureType': 'transit', 'stylers': [{'visibility': 'off'}]},
         {'featureType': 'transit.line', 'elementType': 'geometry', 'stylers': [{'color': '#dfd2ae'}]},
@@ -172,17 +195,18 @@ export class MapComponent implements OnInit, OnDestroy {
       mapTypeControl: false,
       mapTypeControlOptions: {
         mapTypeIds: ['terrain']
-      }
+      },
+      draggableCursor: this.pageType === 'Create' ? 'crosshair' : 'default'
 
     });
 
     // determine if data is available and act accordingly
     if ( this.pathId !== '0' ) {
 
-      const that = this;
+      // const that = this;
       // plot route data
       this.path.features[0]['id'] = 'route-';
-      this.map.data.addGeoJson(this.that.path.features[0]);
+      this.map.data.addGeoJson(that.path.features[0]);
 
       // fit map bounds
       this.map.fitBounds({
@@ -201,6 +225,9 @@ export class MapComponent implements OnInit, OnDestroy {
         const featureId = String(feature.getId());
         const featureType = featureId.substring(0, featureId.indexOf('-'));
         that.lineStyle[featureType]['strokeColor'] = feature.getProperty('color');
+        if ( this.pageType === 'Create' ) {
+          that.lineStyle[featureType]['strokeOpacity'] = 0.5;
+        }
         return that.lineStyle[featureType];
 
       });
@@ -246,13 +273,139 @@ export class MapComponent implements OnInit, OnDestroy {
       };
 
       this.dataService.fromMapToData.emit(emitData);
-
       this.dataService.storeData(emitData);
 
+      /**
+       *
+       */
+      if ( this.pageType === 'Create' ) {
+
+        this.poly = new google.maps.Polyline({
+          map: this.map,
+          editable: false,
+        });
+
+
+        this.map.addListener('click', function(event) {
+
+          that.createdPath = that.poly.getPath();
+
+          if (that.createdPath.getLength() === 0) {
+            // this is the first point, so put a marker on it
+
+            that.createdPath.push(event.latLng);
+            that.poly.setPath(that.createdPath);
+
+            const startMarker = new google.maps.Marker({
+              position: that.createdPath[0],
+              map: that.map
+            });
+
+            const circle = new google.maps.Circle({
+              strokeColor: '#FF0000',
+              strokeOpacity: 0.8,
+              strokeWeight: 2,
+              fillOpacity: 0,
+              map: that.map,
+              center: that.createdPath[0],
+              radius: 20
+            });
+
+          } else {
+            // not the first point, do stuff depending on state of snap bcheckbox
+
+            if (that.isSnapOn === true) {
+              // snap to roads
+
+              const firstPoint = that.createdPath.getAt(that.createdPath.getLength() - 1);
+              const lastPoint = event.latLng;
+              that.geoService.snapToRoad(firstPoint, lastPoint).then( (np) => {
+                np.map( (x) => that.createdPath.push(x) );
+                that.pathHistory.push(np.length);
+                that.dataService.fromCreateToDetail.emit(
+                  that.geoService.pathStats(that.createdPath)
+                );
+              });
+
+            } else {
+              // dont snap to roads
+
+              that.createdPath.push(event.latLng);
+              that.pathHistory.push(1);
+              that.poly.setPath(that.createdPath);
+
+            } // if (that.isSnapOn === true)
+          } // if (that.createdPath.getLength() === 0) {
+
+          // emit path length to data component
+          that.dataService.fromCreateToDetail.emit(
+            that.geoService.pathStats(that.createdPath)
+          );
+
+        });
+      }
     }
 
-
   } // loadMap()
+
+  pathClear() {
+    const createdPath = this.poly.getPath();
+
+    createdPath.clear();
+    this.pathHistory = [];
+    // if (startMarker) {
+    //   startMarker.setMap(null);
+    //   startMarker = null;
+    // }
+
+  }
+
+  pathUndo() {
+
+    console.log('click undo');
+
+    this.createdPath = this.poly.getPath();
+    if (this.pathHistory.length > 0) {
+      for (let i = 0; i < this.pathHistory[this.pathHistory.length - 1]; i++) {
+        this.createdPath.pop();
+      }
+      this.pathHistory.pop();
+
+      // check if undo action removes polyline from screen; if so re-centre
+      const lastPoint = this.createdPath.getAt(this.createdPath.getLength() - 1);
+      const mapBounds = this.map.getBounds();
+      if (!mapBounds.contains(lastPoint)) {
+        this.map.panTo(this.createdPath.getAt(this.createdPath.getLength() - 1));
+      }
+
+    } else {
+      this.createdPath.clear();
+      // if (startMarker) {
+      //   startMarker.setMap(null);
+      //   startMarker = null;
+      // }
+    }
+
+    this.dataService.fromCreateToDetail.emit(
+      this.geoService.pathStats(this.createdPath)
+    );
+
+  }
+
+  pathClose() {
+
+    const firstPoint = this.createdPath.getAt(this.createdPath.getLength() - 1);
+    const lastPoint = this.createdPath.getAt(0);
+    this.geoService.snapToRoad(firstPoint, lastPoint).then( (np) => {
+      np.map( (x) => this.createdPath.push(x) );
+      this.pathHistory.push(np.length);
+      this.dataService.fromCreateToDetail.emit(
+        this.geoService.pathStats(this.createdPath)
+      );
+    });
+
+
+  }
 
 /**
  * DEFINE MAP CONTROLS
@@ -270,7 +423,7 @@ export class MapComponent implements OnInit, OnDestroy {
                           clickFunction: this.pathLoad.bind(this),
                           isEnabled: true};
     const btnCreate   = { type: 'button',
-                          text: 'Create',
+                          text: 'Create New',
                           rollOver: 'Create a new route',
                           clickFunction: this.createNew.bind(this),
                           isEnabled: true};
@@ -328,26 +481,74 @@ export class MapComponent implements OnInit, OnDestroy {
                             clickFunction: this.cbShowMileMarkers.bind(this),
                             isEnabled: true,
                             isChecked: false};
+    const btnCancel =     { type: 'button',
+                            text: 'Cancel',
+                            rollOver: 'Back to route page',
+                            clickFunction: this.cancel.bind(this),
+                            isEnabled: true,
+                            isChecked: false};
+    const btnUndo =       { type: 'button',
+                            text: 'Undo',
+                            rollOver: 'Undo last action',
+                            clickFunction: this.pathUndo.bind(this),
+                            isEnabled: true,
+                            isChecked: false};
+    const btnClear =      { type: 'button',
+                            text: 'Clear',
+                            rollOver: 'Clear route',
+                            clickFunction: this.pathClear.bind(this),
+                            isEnabled: true,
+                            isChecked: false};
+    const btnClose =      { type: 'button',
+                            text: 'Close path',
+                            rollOver: 'Find route back to start',
+                            clickFunction: this.pathClose.bind(this),
+                            isEnabled: true,
+                            isChecked: false};
+    const cbSnap =       {  type: 'check',
+                            text: 'Road Snap',
+                            rollOver: 'Snap to route to roads or paths',
+                            clickFunction: this.cbSnap.bind(this),
+                            isEnabled: true,
+                            isChecked: true};
+    const btnSaveCreated = {  type: 'button',
+                              text: 'Save route',
+                              rollOver: 'Save new route',
+                              clickFunction: this.saveCreated.bind(this),
+                              isEnabled: true,
+                              isChecked: true};
+    const btnExport =      { type: 'button',
+                              text: 'Export .gpx',
+                              rollOver: 'Export to gpx file',
+                              clickFunction: this.pathExport.bind(this),
+                              isEnabled: true,
+                              isChecked: false};
 
     const ctrlsTopLeft = [];
     const ctrlsMiddleLeft = [];
 
-    if ( this.isReviewPage ) {
+    if ( this.pageType === 'Review' ) {
 
-      // review page btns
       ctrlsTopLeft.push(btnSave, btnDiscard);
 
-    } else {
+    } else if ( this.pageType === 'Normal' ) {
 
-      // not a review page
       if ( this.pathType === 'route') {
-        ctrlsTopLeft.push(btnDelete, btnLoad, btnCreate, btnZoom, btnFit);
+        ctrlsTopLeft.push(btnDelete, btnLoad, btnCreate, btnExport);
         ctrlsMiddleLeft.push(radioBtns, cbTracks, cbMileMarkers);
       } else
       if ( this.pathType === 'track') {
         ctrlsTopLeft.push(btnDelete, btnLoad, btnBatch, btnZoom, btnFit);
         ctrlsMiddleLeft.push(cbMileMarkers);
       }
+
+    } else if ( this.pageType === 'Create' ) {
+
+      if ( this.pathType === 'route') {
+        ctrlsTopLeft.push( btnUndo, btnClear, btnClose, btnSaveCreated, btnCancel );
+        ctrlsMiddleLeft.push(radioBtns, cbSnap);
+      }
+
     }
 
     this.createControls(ctrlsTopLeft, 'LEFT_TOP');
@@ -444,7 +645,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
   outerDivFormat(div, def) {
     div.style.opacity = '0.8';
-    div.style.width = '70px';
+    div.style.width = '80px';
     div.style.cursor = 'pointer';
     div.style.marginTop = '2px';
     div.style.textAlign = 'center';
@@ -537,6 +738,19 @@ export class MapComponent implements OnInit, OnDestroy {
     } else {
 
       this.markers.forEach( (m) => { m.setMap(null); });
+    }
+
+  }
+
+  cbSnap () {
+
+    const cb = <HTMLInputElement>document.getElementById('inputRoad Snap');
+
+    console.log('click snap');
+    if ( cb.checked === true ) {
+      this.isSnapOn = true;
+    } else {
+      this.isSnapOn = false;
     }
 
   }
@@ -674,6 +888,28 @@ export class MapComponent implements OnInit, OnDestroy {
     }
   }
 
+  saveCreated () {
+
+    // get polyline
+    const p = this.poly.getPath();
+
+    // test that path exists
+    if ( p.getLength() === 0 ) {
+      alert('Create some points before saving the route');
+      return;
+    }
+
+    // convert to array, get path name and description and package up
+    const c = p.getArray().map( (e) => (e.toString().replace(/[()]/g, '').split(', ')));
+    const d = this.dataService.getCreateRouteData();
+    d.geometry = {coordinates: c.map( (e) => [ parseFloat(e[1]), parseFloat(e[0]) ])};
+
+    // send to the backend
+    this.httpService.saveCreatedRoute(d).subscribe( (r) => {
+      this.router.navigate(['paths', 'route', r.pathId]);
+    });
+  }
+
   pathLoad() {
     this.router.navigate(['load-paths', this.pathType, 'single']);
   }
@@ -713,8 +949,15 @@ export class MapComponent implements OnInit, OnDestroy {
     // });
   }
 
-  createNew () {
-    this.router.navigate(['create-route']);
+  createNew() {
+    this.router.navigate(['paths', this.pathType, this.pathId, true]);
+  }
+
+  pathExport() {
+    // send to the backend
+    this.httpService.exportPath(this.pathType, this.pathId).subscribe( (r) => {
+      alert('Operation complete');
+    });
   }
 
   pathSave() {
@@ -729,9 +972,9 @@ export class MapComponent implements OnInit, OnDestroy {
  * ON SAVE FORM
  */
 
- showGetFilesUI() {
+//  showGetFilesUI() {
 
- }
+//  }
 
   openForm() {
     this.pathName = this.path.features[0].name;
@@ -781,34 +1024,9 @@ processMatchData(d) {
 
 }
 
-/**
- * DATA TRANSFER
- */
-
-  // getDataPackage(source) {
-  //   try {
-  //     return {
-  //       'stats': source.properties.pathStats,
-  //       'name': source.name,
-  //       'description': source.description,
-  //       'startTime': source.properties.startTime,
-  //       'color': source.properties.color
-  //     };
-  //   } catch {
-  //     return {
-  //       'stats': source.getProperty('pathStats'),
-  //       'name': source.getProperty('name'),
-  //       'description': source.getProperty('description'),
-  //       'startTime': source.getProperty('startTime'),
-  //       'color': source.getProperty('color')
-  //     };
-  //   }
-  // }
-
-
-
-
-
+cancel() {
+  this.router.navigate(['paths', this.pathType, this.pathId]);
+}
 
 
 /**

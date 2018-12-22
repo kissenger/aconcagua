@@ -55,7 +55,7 @@ export class ListComponent implements OnInit, OnDestroy {
       console.log('timer');
       this.timer = setInterval( () => {
         this.highlightActiveRow(<HTMLElement>document.getElementById(this.pathId));
-      }, 200);
+      }, 1000);
 
     });
 
@@ -74,8 +74,7 @@ export class ListComponent implements OnInit, OnDestroy {
     // request paths list from backend and listen for response
     if ( typeof this.pathId !== 'undefined' && this.pathId !== '0') {
 
-      this.httpService.getPathsList(this.pathType)
-        .subscribe( result => {
+      this.httpService.getPathsList(this.pathType).subscribe( result => {
             console.log(result);
             this.dataHtml = result;
           },
@@ -86,8 +85,7 @@ export class ListComponent implements OnInit, OnDestroy {
     // if id is not known then we need to find one
     if ( typeof this.pathId === 'undefined' || this.pathId === '0') {
 
-      this.httpService.getPathAuto(this.pathType)
-        .subscribe(
+      this.httpService.getPathAuto(this.pathType).subscribe(
           dataIn => { this.router.navigate(['paths', this.pathType, dataIn['id']]); },
           error  => { console.log(error); },
         );

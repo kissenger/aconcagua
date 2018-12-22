@@ -1,0 +1,13 @@
+
+.container {
+  height: 450px;
+  overflow-y: auto;
+  margin: 10px 0px 0px 0px;
+  width: 100%;
+  padding: 5px;
+  border-top: 1px solid #DDD2AD;
+  border-left: 1px solid #DDD2AD;
+  border-right: 1px solid #DDD2AD;
+  font-size: 14px;
+  /* border: 2px solid purple; */
+}
