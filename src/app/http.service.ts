@@ -59,8 +59,8 @@ export class HttpService {
   }
 
 
-  getPathsList(type) {
-    return this.http.get(this.getPathsListUrl + type);
+  getPathsList(type, offset) {
+    return this.http.get(this.getPathsListUrl + type + '/' + offset);
   }
 
   getPathAuto(type) {

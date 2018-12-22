@@ -127,13 +127,18 @@ export class MapComponent implements OnInit, OnDestroy {
         } else if ( this.pageType === 'Review' ) {
         // this is review page
 
-          this.myService = this.dataService.fromLoadToMap.
-            subscribe( (result) => {
-              this.path = result['geoJson'];
-              this.pathId = this.path.features[0].properties.pathId;
-              this.loadMap();
-              document.documentElement.style.cursor = 'default';
-          });
+          this.path = this.dataService.getStoredNewPath();
+          this.pathId = this.path.features[0].properties.pathId;
+
+          this.loadMap();
+          document.documentElement.style.cursor = 'default';
+          // this.myService = this.dataService.fromLoadToMap.
+          //   subscribe( (result) => {
+          //     this.path = result['geoJson'];
+          //     this.pathId = this.path.features[0].properties.pathId;
+          //     this.loadMap();
+          //     document.documentElement.style.cursor = 'default';
+          // });
 
         }
 

@@ -155,7 +155,7 @@ function writeGpx(path){
 
   return new Promise( (resolve, reject) => {
 
-    const creator = 'Aconcagua Beta https://github.com/kissenger/aconcagua';
+    const creator = 'Aconcagua Beta https://kissenger.github.io/aconcagua/';
     const xmlns = 'http://www.topografix.com/GPX/1/0';
 
     const file = fs.createWriteStream('output_test.gpx');

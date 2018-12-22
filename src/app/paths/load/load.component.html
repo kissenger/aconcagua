@@ -1,7 +1,13 @@
 
 <div>
-  <input
+  <input *ngIf="isBatch===true"
     type="file"
     (change)="onFilePicked($event)"
     multiple>
+
+    <input *ngIf="isBatch===false"
+    type="file"
+    (change)="onFilePicked($event)"
+    single>
+
 </div>

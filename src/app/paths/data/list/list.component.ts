@@ -25,9 +25,10 @@ export class ListComponent implements OnInit, OnDestroy {
   httpClient: any;
   private pathType: String;
   private paramsSubs;
-  private dataHtml;
+  private dataHtml = [];
   public timer: NodeJS.Timer;
   private pathId: string;
+  private listOffset = 0;
 
   constructor(
     private http: HttpClient,
@@ -39,25 +40,18 @@ export class ListComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
 
-
-
     this.paramsSubs = this.activatedRouter.params.subscribe(params => {
-      // console.log('update list on params change, id = ' + params.id);
+
       this.pathType = params.type;
       this.pathId = params.id;
-      if ( this.pathId === '-1' ) {
 
-      } else {
-        this.updateList();
-      }
-
-      // user timer to wait for page to render before highlighting active row
-      console.log('timer');
       this.timer = setInterval( () => {
         this.highlightActiveRow(<HTMLElement>document.getElementById(this.pathId));
-      }, 1000);
+      }, 100);
 
     });
+
+    this.updateList();
 
 
 
@@ -71,39 +65,40 @@ export class ListComponent implements OnInit, OnDestroy {
 
   updateList() {
 
-    // request paths list from backend and listen for response
     if ( typeof this.pathId !== 'undefined' && this.pathId !== '0') {
+      // path id is known, get list
 
-      this.httpService.getPathsList(this.pathType).subscribe( result => {
-            console.log(result);
-            this.dataHtml = result;
-          },
-          error => { console.log(error); },
-        );
-    }
+      this.httpService.getPathsList(this.pathType, this.listOffset)
+        .subscribe( result => {
+          this.dataHtml = this.dataHtml.concat(result);
+        });
 
-    // if id is not known then we need to find one
-    if ( typeof this.pathId === 'undefined' || this.pathId === '0') {
+    } else if ( typeof this.pathId === 'undefined' || this.pathId === '0') {
+      // path id is not known, auto-select from backend and navigate back to maps
 
-      this.httpService.getPathAuto(this.pathType).subscribe(
-          dataIn => { this.router.navigate(['paths', this.pathType, dataIn['id']]); },
-          error  => { console.log(error); },
-        );
+      this.httpService.getPathAuto(this.pathType)
+        .subscribe( result => {
+          this.router.navigate(['paths', this.pathType, result['id']]);
+        });
     }
 
   }
 
+  onMoreClick() {
+    this.listOffset++;
+    this.updateList();
+  }
+
   onLineClick(idFromClick: string) {
 
-    console.log('click');
     document.documentElement.style.cursor = 'wait';
     document.getElementById(this.pathId).style.backgroundColor = '#FFFFFF';
+    document.getElementById(idFromClick).style.backgroundColor = '#E9E2CB';
 
-    this.httpService.getPathById(this.pathType, idFromClick, true)
-      .subscribe( () => {this.router.navigate(['paths', this.pathType, idFromClick]);
-                         document.documentElement.style.cursor = 'default'; },
-                  error => { console.log(error); } );
-
+    this.httpService.getPathById(this.pathType, idFromClick, true).subscribe( () => {
+        this.router.navigate(['paths', this.pathType, idFromClick]);
+        document.documentElement.style.cursor = 'default';
+      });
   }
 
   ngOnDestroy() {

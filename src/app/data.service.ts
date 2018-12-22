@@ -12,11 +12,21 @@ export class DataService {
 
   private storedData;
   private storedCreateRouteData;
+  private storedPath;
 
   // data emitters
   fromLoadToMap = new EventEmitter();
   fromMapToData = new EventEmitter();
   fromCreateToDetail = new EventEmitter();
+
+  storeNewPath(data) {
+    this.storedPath = data;
+  }
+
+  getStoredNewPath() {
+   return this.storedPath;
+  }
+
 
   storeData(data) {
     this.storedData = data;
@@ -25,6 +35,8 @@ export class DataService {
   getStoredData() {
     return this.storedData;
   }
+
+
 
   storeCreateRouteData(data) {
     this.storedCreateRouteData = data;

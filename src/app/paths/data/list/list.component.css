@@ -17,7 +17,7 @@
   /* margin: 10px; */
   padding: 5px 5px 5px 10px;
   cursor: default;
-  background-color: white;
+  /* background-color: white; */
   border-bottom: 1px solid #DDD2AD;
   /* margin: 1px; */
 }
@@ -33,4 +33,15 @@
   font-size: 14px;
   opacity: 1;
   cursor: default;
+}
+
+.more {
+  /* margin: 10px; */
+  text-align: center;
+  background-color: #E9E2CB;
+  margin: 0px 0px 0px 0px;
+  padding: 5px 5px 5px 10px;
+  cursor: default;
+  border-bottom: 1px solid #DDD2AD;
+  /* margin: 1px; */
 }

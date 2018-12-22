@@ -239,7 +239,7 @@ app.get('/delete-path/:type/:id', auth.verifyToken, (req, res) => {
  *  Retrieve a list of paths from database
  *****************************************************************/
 
-app.get('/get-paths-list/:type', auth.verifyToken, (req, res) => {
+app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
 
   /**
    * returns only:
@@ -247,16 +247,17 @@ app.get('/get-paths-list/:type', auth.verifyToken, (req, res) => {
    *  name
    *  */
 
-  // ensure user is authorised
-  const userId = req.userId;
-  console.log(userId);
-  if ( !userId ) {
-    res.status(401).send('Unauthorised');
-  }
-
   // variables
   let pathModel;
   let condition = {}, filter = {}, sort = {};
+  const LIMIT = 50 //number of items to return in one query
+
+  // ensure user is authorised
+  const userId = req.userId;
+
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
 
   // get the appropriate model and setup query
   condition['isSaved'] = true;
@@ -280,7 +281,7 @@ app.get('/get-paths-list/:type', auth.verifyToken, (req, res) => {
 
   // execute the query and return result to front-end
   pathModel
-    .find(condition, filter).sort(sort)
+    .find(condition, filter).sort(sort).limit(LIMIT).skip(LIMIT*(req.params.offset))
     .then(documents => { res.status(201).json(new ListData(documents)) });
 
 })
@@ -359,7 +360,7 @@ app.get('/get-path-auto/:type', auth.verifyToken, (req, res) => {
   // construct query
   condition['isSaved'] = 'true';
   condition['userId'] = userId;
-  sort['properties.startTime'] = -1;
+  sort['startTime'] = -1;
 
   // query the database, checking for zero returns and adjusting id accordingly
   pathModel
@@ -388,7 +389,7 @@ app.post('/save-created-route/', auth.verifyToken, (req, res) => {
 
   // Read file data & convert to geojson format
   const path = new Route(req.body.name, req.body.description, req.body.geometry.coordinates);
-  console.log(path.mongoFormat());
+
   MongoPath.Routes.create(path.mongoFormat(userId, true)).then( (document) => {
     res.status(201).json({pathId: document._id});
   })
@@ -415,7 +416,6 @@ app.get('/export-path/:type/:id', auth.verifyToken, (req, res) => {
 
   MongoPath.Routes.find({userId: userId, _id: req.params.id}).then(document => {
 
-    console.log(document);
     let route = new Path(document[0].geometry.coordinates, document[0].params.elev);
     writeGpx(route).then(
       res.status(201).json({response: 'write ok!'})
