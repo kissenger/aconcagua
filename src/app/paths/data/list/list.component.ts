@@ -25,10 +25,11 @@ export class ListComponent implements OnInit, OnDestroy {
   httpClient: any;
   private pathType: String;
   private paramsSubs;
-  private dataHtml = [];
+  private htmlData = [];
   public timer: NodeJS.Timer;
   private pathId: string;
   private listOffset = 0;
+  private isEndOfList = false;
 
   constructor(
     private http: HttpClient,
@@ -54,7 +55,6 @@ export class ListComponent implements OnInit, OnDestroy {
     this.updateList();
 
 
-
   } // ngOnInit
 
   highlightActiveRow(div) {
@@ -65,28 +65,41 @@ export class ListComponent implements OnInit, OnDestroy {
 
   updateList() {
 
-    if ( typeof this.pathId !== 'undefined' && this.pathId !== '0') {
-      // path id is known, get list
+    // get list of paths
+    this.httpService.getPathsList(this.pathType, this.listOffset).subscribe( result => {
 
-      this.httpService.getPathsList(this.pathType, this.listOffset)
-        .subscribe( result => {
-          this.dataHtml = this.dataHtml.concat(result);
-        });
 
-    } else if ( typeof this.pathId === 'undefined' || this.pathId === '0') {
-      // path id is not known, auto-select from backend and navigate back to maps
+      if ( typeof result[0] !== 'undefined' ) {
+        // query returned data, so process it
 
-      this.httpService.getPathAuto(this.pathType)
-        .subscribe( result => {
-          this.router.navigate(['paths', this.pathType, result['id']]);
-        });
-    }
+        // reset content of 'more_div
+        document.getElementById('more_div').innerHTML = 'more';
+
+        // compile data and confirm if we are at the end of the list yet
+        this.htmlData = this.htmlData.concat(result);
+        if ( this.htmlData.length === this.htmlData[0].count ) {
+          this.isEndOfList = true;
+        }
+
+        // if id not provided on the url, then use first one in list and re-navigate
+        if ( typeof this.pathId === 'undefined' || this.pathId === '0') {
+          this.router.navigate(['paths', this.pathType, this.htmlData[0].pathId]);
+        }
+
+      } else {
+        // no data in query, so navigate back with path id = 0 (ensures that  map loads)
+        this.router.navigate(['paths', this.pathType, '0']);
+      }
+
+    });
 
   }
 
   onMoreClick() {
+  // when the 'more_div' is clicked...
     this.listOffset++;
     this.updateList();
+    document.getElementById('more_div').innerHTML = 'fetching...';
   }
 
   onLineClick(idFromClick: string) {

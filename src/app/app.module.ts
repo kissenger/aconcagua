@@ -8,6 +8,7 @@ import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { DataService } from './data.service';
 import { HttpService } from './http.service';
+import { ButtonsService } from './buttons.service';
 import { UtilsService } from './utils.service';
 import { GeoService } from './geo.service';
 import { TokenInterceptorService } from './token-interceptor.service';
@@ -60,6 +61,7 @@ import { RegisterComponent } from './register/register.component';
     AuthService,
     HttpService,
     UtilsService,
+    ButtonsService,
     GeoService,
     AuthGuard,
     {

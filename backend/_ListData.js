@@ -1,7 +1,7 @@
 
 class ListData  {
 
-  constructor(docs) {
+  constructor(docs, c) {
 
     let out = [];
     docs.forEach( (d) => {
@@ -9,7 +9,8 @@ class ListData  {
         name: d.name.length === 0 ? d.category + ' ' + d.pathType : d.name,
         stats: d.stats,
         startTime: d.startTime,
-        pathId: d._id
+        pathId: d._id,
+        count: c
       })
     })
 

@@ -149,6 +149,61 @@ app.post('/import-route/', auth.verifyToken, upload.single('filename'), (req, re
 });
 
 
+
+
+/*****************************************************************
+ *
+ *  Move  a path from one collection to another
+ *
+ *
+ *****************************************************************/
+
+app.get('/move-path/:id/:from/:to', auth.verifyToken, upload.single('filename'), (req, res) => {
+
+  let fromModel;
+  let toModel;
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  if ( req.params.from === 'challenge' ) { fromModel = MongoPath.Challenges };
+  if ( req.params.from === 'track' ) { fromModel  = MongoPath.Tracks } ;
+  if ( req.params.from === 'route' ) { fromModel  = MongoPath.Routes } ;
+
+  if ( req.params.to === 'challenge' ) { toModel = MongoPath.Challenges };
+  if ( req.params.to === 'track' ) { toModel  = MongoPath.Tracks } ;
+  if ( req.params.to === 'route' ) { toModel  = MongoPath.Routes } ;
+
+  fromModel.findOne( {'userId': userId, '_id': req.params.id} ).then((a) => {
+    const c = a.toObject();
+    delete c.__v;
+    delete c._id;
+    fromModel.findByIdAndRemove(mongoose.Types.ObjectId(req.params.id), (msg) => {});
+    toModel.create(c).then( (b) =>
+    {
+      // res.status(201).json( {pathId: b._id} );
+
+      if ( req.params.to === 'challenge' ) {
+        // if route --> challenge then call match anal
+        getMatchFromImportRoute(b._id).then( (result) => {
+          res.status(201).json(result);
+        });
+
+      }
+      if (req.params.to === 'route' ) {
+        // if challenge --> route then delete any match data
+        matchDelete(req.params.id, req.params.type);
+        res.status(201).json( {status: 'deleted ok'});
+      }
+
+    })
+  })
+
+});
+
+
 /*****************************************************************
  *
  *  Save a path to database
@@ -169,6 +224,7 @@ app.post('/save-path/:type/:id',  auth.verifyToken, (req, res) => {
 
   // get the appropriate model
   if ( req.params.type === 'route' ) { pathModel  = MongoPath.Routes } ;
+  if ( req.params.type === 'challenge' ) { pathModel = MongoPath.Challenges };
   if ( req.params.type === 'track' ) { pathModel  = MongoPath.Tracks } ;
 
   // construct query based on incoming payload
@@ -187,10 +243,8 @@ app.post('/save-path/:type/:id',  auth.verifyToken, (req, res) => {
       if ( req.params.type === 'track' ) {
         matchNewTrack(req.params.id);
         res.status(201).json( {'result': 'save ok'} );
-      } else {
-        getMatchFromImportRoute(req.params.id).then( () => {
-          res.status(201).json( {'result': 'save ok'} );
-        });
+      } else if ( req.params.type === 'challenge' ) {
+
       }
 
     });
@@ -216,10 +270,10 @@ app.get('/delete-path/:type/:id', auth.verifyToken, (req, res) => {
 
   // get the appropriate model
   if ( req.params.type === 'route' ) { pathModel  = MongoPath.Routes} ;
+  if ( req.params.type === 'challenge' ) { pathModel = MongoPath.Challenges };
   if ( req.params.type === 'track' ) { pathModel  = MongoPath.Tracks} ;
 
-  // tidy up match data on delete
-  matchDelete(req.params.id, req.params.type);
+
 
   // construct query based on incoming payload
   condition['_id'] = req.params.id;
@@ -273,6 +327,12 @@ app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
     sort['creationDate'] = -1;
   };
 
+  if ( req.params.type === 'challenge' ) {
+    pathModel = MongoPath.Challenges;
+    filter['creationDate'] = 1;
+    sort['creationDate'] = -1;
+  };
+
   if ( req.params.type === 'track' ) {
     pathModel = MongoPath.Tracks;
     filter['startTime'] = 1;
@@ -280,11 +340,13 @@ app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
   };
 
   // execute the query and return result to front-end
-  pathModel
-    .find(condition, filter).sort(sort).limit(LIMIT).skip(LIMIT*(req.params.offset))
-    .then(documents => { res.status(201).json(new ListData(documents)) });
-
-})
+  pathModel.countDocuments(condition).then( (count) => {
+    pathModel
+      .find(condition, filter).sort(sort).limit(LIMIT).skip(LIMIT*(req.params.offset))
+      .then(documents => {
+        res.status(201).json(new ListData(documents, count)) });
+    })
+  })
 
 
 /*****************************************************************
@@ -301,6 +363,7 @@ app.get('/get-path-by-id/:type/:id/:idOnly', auth.verifyToken, (req, res) => {
 
   // get the appropriate model
   if ( req.params.type === 'route' ) { var pathModel = MongoPath.Routes };
+  if ( req.params.type === 'challenge' ) { var pathModel = MongoPath.Challenges };
   if ( req.params.type === 'track' ) { var pathModel = MongoPath.Tracks };
 
   // query the database and return result to front end
@@ -317,13 +380,14 @@ app.get('/get-path-by-id/:type/:id/:idOnly', auth.verifyToken, (req, res) => {
         // need to send everything
 
         let retRoute= {geoJson: new GeoJson(documents)};
-        if ( req.params.type === 'route' ) {
-            getMatchFromDb(documents[0]).then( (retMatch) => {
+        if ( req.params.type === 'challenge' ) {
+          // challenge so get matches
+          getMatchFromDb(documents[0]).then( (retMatch) => {
             res.status(201).json({...retRoute, ...retMatch});
           });
 
         } else {
-          // not a route
+          // not a challenge
           res.status(201).json(retRoute);
         }
 
@@ -342,35 +406,36 @@ app.get('/get-path-by-id/:type/:id/:idOnly', auth.verifyToken, (req, res) => {
  *    Route: Time route was uploaded
  *    Track: Time track was recorded
  *****************************************************************/
-app.get('/get-path-auto/:type', auth.verifyToken, (req, res) => {
+// app.get('/get-path-auto/:type', auth.verifyToken, (req, res) => {
 
-  // ensure user is authorised
-  const userId = req.userId;
-  if ( !userId ) {
-    res.status(401).send('Unauthorised');
-  }
+//   // ensure user is authorised
+//   const userId = req.userId;
+//   if ( !userId ) {
+//     res.status(401).send('Unauthorised');
+//   }
 
-  let pathModel;
-  let condition = {}, sort = {};
+//   let pathModel;
+//   let condition = {}, sort = {};
 
-  // get the appropriate model
-  if ( req.params.type === 'route' ) { pathModel = MongoPath.Routes };
-  if ( req.params.type === 'track' ) { pathModel = MongoPath.Tracks };
+//   // get the appropriate model
+//   if ( req.params.type === 'route' ) { pathModel = MongoPath.Routes };
+//   if ( req.params.type === 'challenge' ) { pathModel = MongoPath.Challenges };
+//   if ( req.params.type === 'track' ) { pathModel = MongoPath.Tracks };
 
-  // construct query
-  condition['isSaved'] = 'true';
-  condition['userId'] = userId;
-  sort['startTime'] = -1;
+//   // construct query
+//   condition['isSaved'] = 'true';
+//   condition['userId'] = userId;
+//   sort['startTime'] = -1;
 
-  // query the database, checking for zero returns and adjusting id accordingly
-  pathModel
-    .find(condition).sort(sort).limit(1)
-    .then(documents => {
-        res.status(201).json({
-          'id': documents.length === 0 ? 0 : documents[0]._id });
-    });
+//   // query the database, checking for zero returns and adjusting id accordingly
+//   pathModel
+//     .find(condition).sort(sort).limit(1)
+//     .then(documents => {
+//         res.status(201).json({
+//           'id': documents.length === 0 ? 0 : documents[0]._id });
+//     });
 
-})
+// })
 
 
 /*****************************************************************
@@ -453,9 +518,10 @@ function getMatchFromImportRoute(routeId) {
 
   return new Promise( resolve => {
 
-    MongoPath.Routes.find( {'_id': routeId} ).then( (result) => {
+    MongoPath.Challenges.find( {'_id': routeId} ).then( (result) => {
 
       const route = result[0];
+      console.log(route);
       const geomQuery = {
         'type': 'Polygon',
         'coordinates': [[
@@ -599,7 +665,7 @@ function getMatchFromDb(route) {
 
       // find all routes that intersect with selected route id
       console.log('matchNewTrack: get routes...');
-      MongoPath.Routes.find( { geometry: { $geoIntersects: { $geometry: geomQuery } } }).then( (routes) => {
+      MongoPath.Challenges.find( { geometry: { $geoIntersects: { $geometry: geomQuery } } }).then( (routes) => {
 
         console.log('matchNewTrack: found ' + routes.length + ' matched routes');
         if ( routes.length === 0 ) resolve(true);

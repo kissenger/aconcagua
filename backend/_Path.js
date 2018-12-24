@@ -395,9 +395,13 @@ class Path  {
 
     // strip out points from class using whats left of j
     this.lngLat = j.map( x => this.lngLat[x] );
-    console.log(this.elev);
-    if ( typeof this.elev !== 'undefined' ) this.elev = j.map( x => this.elev[x] );
-    if ( typeof this.time !== 'undefined' ) this.time = j.map( x => this.time[x] );
+    console.log(this.time);
+    if ( typeof this.elev !== 'undefined') {
+      if ( this.elev.length !== 0 ) this.elev = j.map( x => this.elev[x] );
+    }
+    if ( typeof this.time !== 'undefined') {
+      if ( this.time.length !== 0 ) this.time = j.map( x => this.time[x] );
+    }
 
     // update path length
     this.pathSize = this.lngLat.length - 1;
@@ -408,8 +412,6 @@ class Path  {
   }
 
 }
-
-
 
 
 class Track extends Path {

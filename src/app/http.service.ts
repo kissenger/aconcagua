@@ -15,9 +15,15 @@ export class HttpService {
   private importRouteUrl = 'http://localhost:3000/import-route/';
   private importTracksUrl = 'http://localhost:3000/import-tracks/';
   private saveCreatedRouteUrl = 'http://localhost:3000/save-created-route/';
-  public exportPathUrl = 'http://localhost:3000/export-path/';
+  private exportPathUrl = 'http://localhost:3000/export-path/';
+  private movePathUrl = 'http://localhost:3000/move-path/';
 
   constructor( private http: HttpClient ) {}
+
+  movePath(id, from, to) {
+    return this.http.get<any>(this.movePathUrl + id + '/' + from + '/' + to);
+  }
+
 
   exportPath(type, id) {
     return this.http.get<any>(this.exportPathUrl + type + '/' + id);

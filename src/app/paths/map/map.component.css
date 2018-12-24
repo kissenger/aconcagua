@@ -43,3 +43,13 @@
 
 
 
+
+
+.outer-div {
+  opacity: '0.8';
+  width: '150px';
+  cursor: 'pointer';
+  margin: '-1px 0px 0px 2px';
+  text-align: 'left';
+  border: '#808080 1px solid';
+}

@@ -1,7 +1,7 @@
 
 
 <div class='container'>
-  <div *ngFor="let line of dataHtml">
+  <div *ngFor="let line of htmlData">
     <div id={{line.pathId}} (click)="onLineClick(line.pathId)" class="item">
       <div class="name">
           {{line.name}}
@@ -13,6 +13,11 @@
         {{line.stats.ascent / line.stats.distance * 1000 | number: '1.1-1'}} m/km
       </div>
 
+      <div *ngIf="pathType === 'challenge'" class="details">
+          {{line.stats.distance/1000 | number: '1.1-1'}} km -
+          {{line.stats.ascent / line.stats.distance * 1000 | number: '1.1-1'}} m/km
+        </div>
+
       <div *ngIf="pathType === 'track'" class="details">
         {{utils.prettifyDate(line.startTime)}} -
         {{line.stats.distance/1000 | number: '1.1-1'}} km -
@@ -21,7 +26,7 @@
 
     </div>
   </div>
-  <div class="more" (click)="onMoreClick()">
-    more
+  <div *ngIf="!isEndOfList" class="more" (click)="onMoreClick()" id="more_div">
+
   </div>
 </div>
