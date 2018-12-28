@@ -20,18 +20,19 @@ export class HttpService {
 
   constructor( private http: HttpClient ) {}
 
-  movePath(id, from, to) {
+  movePath(id: String, from: String, to: String) {
     return this.http.get<any>(this.movePathUrl + id + '/' + from + '/' + to);
   }
 
 
-  exportPath(type, id) {
+  exportPath(type: String, id: String) {
     return this.http.get<any>(this.exportPathUrl + type + '/' + id);
   }
 
-  saveCreatedRoute(pathData) {
-    return this.http.post<any>(this.saveCreatedRouteUrl, pathData);
+  saveCreatedRoute(type: String, pathData: Object) {
+    return this.http.post<any>(this.saveCreatedRouteUrl + type, pathData);
   }
+
   importRoute(formData) {
     return this.http.post<any>(this.importRouteUrl, formData);
   }
@@ -40,36 +41,36 @@ export class HttpService {
     return this.http.post<any>(this.importTracksUrl + sob, formData);
   }
 
-  getMatchedTracks(routeId) {
+  getMatchedTracks(routeId: String) {
     return this.http.get<any>(this.getMatchedTracksUrl + routeId);
   }
 
-  getPathById(type, id, returnIdOnly) {
+  getPathById(type: String, id: String, returnIdOnly: Boolean) {
     return this.http.get<any>(this.getPathByIdUrl + type + '/' + id + '/' + returnIdOnly);
   }
 
-  matchFromDb(id) {
+  matchFromDb(id: String) {
     return this.http.get<any>(this.matchFromDbUrl + id);
   }
 
-  deletePath(type, id) {
+  deletePath(type: String, id: String) {
     return this.http.get<any>(this.deletePathUrl + type + '/' + id);
   }
 
-  matchFromLoad(id) {
+  matchFromLoad(id: String) {
    return this.http.get<any>(this.matchFromLoadUrl + id);
   }
 
-  savePath(type, id, pyld) {
+  savePath(type: String, id: String, pyld) {
     return this.http.post<any>(this.savePathUrl + type + '/' + id, pyld);
   }
 
 
-  getPathsList(type, offset) {
+  getPathsList(type: String, offset: Number) {
     return this.http.get(this.getPathsListUrl + type + '/' + offset);
   }
 
-  getPathAuto(type) {
+  getPathAuto(type: String) {
     return this.http.get(this.getPathAutoUrl + type);
   }
 

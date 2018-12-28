@@ -183,7 +183,7 @@ app.get('/move-path/:id/:from/:to', auth.verifyToken, upload.single('filename'),
     fromModel.findByIdAndRemove(mongoose.Types.ObjectId(req.params.id), (msg) => {});
     toModel.create(c).then( (b) =>
     {
-      // res.status(201).json( {pathId: b._id} );
+      res.status(201).json( {pathId: b._id} );
 
       if ( req.params.to === 'challenge' ) {
         // if route --> challenge then call match anal
@@ -238,13 +238,12 @@ app.post('/save-path/:type/:id',  auth.verifyToken, (req, res) => {
   pathModel
     .updateOne(condition, {$set: filter}, {writeConcern: {j: true}})
     .then( (document) => {
-      // console.log(document);
+
+      res.status(201).json( {'result': 'save ok'} );
 
       if ( req.params.type === 'track' ) {
         matchNewTrack(req.params.id);
-        res.status(201).json( {'result': 'save ok'} );
       } else if ( req.params.type === 'challenge' ) {
-
       }
 
     });
@@ -444,7 +443,7 @@ app.get('/get-path-by-id/:type/:id/:idOnly', auth.verifyToken, (req, res) => {
  *
  *
  *****************************************************************/
-app.post('/save-created-route/', auth.verifyToken, (req, res) => {
+app.post('/save-created-route/:type', auth.verifyToken, (req, res) => {
 
   // ensure user is authorised
   const userId = req.userId;
@@ -452,10 +451,17 @@ app.post('/save-created-route/', auth.verifyToken, (req, res) => {
     res.status(401).send('Unauthorised');
   }
 
-  // Read file data & convert to geojson format
-  const path = new Route(req.body.name, req.body.description, req.body.geometry.coordinates);
 
-  MongoPath.Routes.create(path.mongoFormat(userId, true)).then( (document) => {
+  if ( req.params.type === 'track' ) {
+    var pathModel = MongoPath.Tracks
+    var path = new Track(req.body.name, req.body.description, req.body.geometry.coordinates);
+  } else {
+    var pathModel = MongoPath.Routes
+    var path = new Route(req.body.name, req.body.description, req.body.geometry.coordinates);
+  }
+
+  // Read file data & convert to geojson format
+  pathModel.create(path.mongoFormat(userId, true)).then( (document) => {
     res.status(201).json({pathId: document._id});
   })
 })
@@ -623,9 +629,7 @@ function getMatchFromDb(route) {
 
       })
     })
-
   }
-
 }
 
 

@@ -36,13 +36,11 @@ export class DataService {
     return this.storedData;
   }
 
-
-
-  storeCreateRouteData(data) {
+  storeCreatedRouteDetails(data) {
     this.storedCreateRouteData = data;
   }
 
-  getCreateRouteData() {
+  getCreateRouteDetails() {
     return this.storedCreateRouteData;
   }
 }

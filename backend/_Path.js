@@ -54,7 +54,7 @@ class Path  {
       pathType: this.pathType,
       startTime: this.startTime,
       category: this.category(),
-      name: this.name,
+      name: typeof this.name === 'undefined' ? "" : this.name,
       description: this.description,
       geometry: {
         type: 'LineString',

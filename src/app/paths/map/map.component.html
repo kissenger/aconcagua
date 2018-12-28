@@ -1,4 +1,36 @@
-<div id="map"> </div>
+<div class="map-container">
+
+  <div id="map"></div>
+
+  <div class="dropdown-menu-container">
+
+    <!-- construct top level menu button -->
+    <div class="menu-item outer-master">
+      <div class="menu-item inner"
+        id="-1"
+        [ngClass]="[hovered === -1 ? 'item-hover' : 'item-unhover', isMenuSticky ? 'item-undisplay' : 'item-display']"
+        (click)="visible = visible === 1 ? 0 : 1"
+        (mouseover)="hovered = -1"
+        (mouseout)="hovered = -2">
+          menu
+      </div>
+    </div>
+
+    <!-- construct sub menu items -->
+    <div class="menu-item outer">
+      <div *ngFor="let menuItem of menuItems; let i = index">
+        <div class="menu-item inner"
+          id="{{i}}"
+          [ngClass]="[hovered === i ? 'item-hover' : 'item-unhover', (!visible && !isMenuSticky) ? 'item-undisplay' : 'item-display']"
+          (click)="this[menuItem.clickFunction](); visible=0"
+          (mouseover)="hovered = i"
+          (mouseout)="hovered = -2">
+            {{menuItem.text}}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="form-popup" id="myForm">
   <form class="form-container">

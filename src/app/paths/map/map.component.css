@@ -1,15 +1,112 @@
+
+.map-container {
+  height: 80vh;
+  width: 100%;
+  border: solid orange 0px;
+  position: relative;
+}
+
 #map{
 
   height: 80vh;
   width: 100%;
   opacity: 1;
-  /* margin: auto; */
   border: solid orange 0px;
+  z-index: 1;
+}
+
+/**********************************
+ *   Popup save path form
+ **********************************/
+
+ /* contains dropdown menu */
+
+.dropdown-menu-container {
+  position: absolute;
+  float: left;
+  top: 5px;
+  left: 5px;
+  z-index: 2;
+  border: red 0px dotted;
+
+}
+
+.sticky-menu-container {
+  position: absolute;
+  float: left;
+  top: 5px;
+  left: 5px;
+  z-index: 2;
+  border: red 0px dotted;
 }
 
 
-/* Button used to open the contact form - fixed at the bottom of the page */
-.open-button {
+
+.menu-item{
+  /* position: relative; */
+
+  cursor: pointer;
+  text-align: left;
+  opacity: 1;
+}
+
+.item-hover{
+  background-color: #FFFFFF;
+}
+
+.item-unhover{
+  background-color: #e0e0e0;
+}
+
+.item-display{
+  display: block;
+}
+
+.item-undisplay{
+  display: none;
+}
+
+.menu-item.outer{
+  width: 150px;
+  margin: 0px 0px 0px 0px;
+}
+
+.menu-item.outer-master{
+  text-align: center;
+  width: 50px;
+  margin: 0px 0px 5px 0px;
+}
+
+.menu-item.inner{
+  font-size: 12px;
+  line-height: 25px;
+  margin: -1px 0px 0px 0px;
+  padding: 0px 5px 0px 5px;
+  border: #808080 1px solid;
+}
+
+
+/* .menu-sub-item-outer {
+  opacity: 0.8;
+  width: 150px;
+  cursor: pointer;
+  margin: 2px;
+  text-align: left;
+  border: #808080 1px solid;
+}
+
+.menu-sub-item-inner {
+  font-size: 12px;
+  line-height: 25px;
+  padding: 0px 5px 0px 5px;
+  cursor: pointer;
+  margin: 2px;
+  text-align: left;
+  border: #808080 1px solid;
+} */
+
+
+/* .open-button {
   background-color: #555;
   color: black;
   padding: 16px 20px;
@@ -20,9 +117,12 @@
   bottom: 23px;
   right: 28px;
   width: 280px;
-}
+} */
 
-/* The popup form - hidden by default */
+/**********************************
+ *   Popup save path form
+ **********************************/
+
 .form-popup {
   display: none;
   position: absolute;
@@ -44,12 +144,3 @@
 
 
 
-
-.outer-div {
-  opacity: '0.8';
-  width: '150px';
-  cursor: 'pointer';
-  margin: '-1px 0px 0px 2px';
-  text-align: 'left';
-  border: '#808080 1px solid';
-}

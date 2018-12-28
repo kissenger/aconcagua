@@ -8,7 +8,7 @@ import { AuthGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { DataService } from './data.service';
 import { HttpService } from './http.service';
-import { ButtonsService } from './buttons.service';
+
 import { UtilsService } from './utils.service';
 import { GeoService } from './geo.service';
 import { TokenInterceptorService } from './token-interceptor.service';
@@ -30,6 +30,9 @@ import { CreateDetailComponent } from './paths/data/create-detail/create-detail.
 import { SummaryComponent } from './paths/data/summary/summary.component';
 import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
+import { InitialisationData } from './initialisationdata.model';
+import { Controls } from './controls.model';
+import { ControlFunctions } from './controlfunctions.service';
 
 @NgModule({
   declarations: [
@@ -54,21 +57,23 @@ import { RegisterComponent } from './register/register.component';
     BrowserModule,
     AppRoutingModule,
     FormsModule,
-    HttpClientModule,
+    HttpClientModule
   ],
   providers: [
     DataService,
     AuthService,
     HttpService,
     UtilsService,
-    ButtonsService,
     GeoService,
     AuthGuard,
     {
       provide: HTTP_INTERCEPTORS,
       useClass: TokenInterceptorService,
       multi: true
-    }
+    },
+    InitialisationData,
+    Controls,
+    ControlFunctions
   ],
   bootstrap: [AppComponent],
 })

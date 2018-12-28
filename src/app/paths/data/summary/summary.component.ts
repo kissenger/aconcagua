@@ -59,7 +59,7 @@ export class SummaryComponent implements OnInit, OnDestroy {
 
   onChange() {
 
-    this.dataService.storeCreateRouteData({
+    this.dataService.storeCreatedRouteDetails({
       name: this.newName,
       description: this.newDesc
     });
