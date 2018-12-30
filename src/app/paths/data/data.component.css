@@ -1,36 +1,35 @@
 
 .container {
   height: 80vh;
-  border-left: 0px solid black;
-  border-right: 0px solid black;
   width: 100%;
   padding: 0px;
   display: inline-block;
+  border: 0px solid orange;
 }
 
-.summary-container {
-  /* height: 17%;
+/* .summary-container {
+  height: 17%;
   width: 100%;
-  padding: 0px; */
+  padding: 0px;
 }
 
 .menu-and-list-container {
-  /* height: 83%;
+  height: 83%;
   border-left: 0px solid black;
   border-right: 0px solid black;
   border-bottom: 1px solid #DDD2AD;
   width: 100%;
   padding: 0px;
-  display: inline-block; */
-  /* border: 2px dashed orange; */
-}
+  display: inline-block;
+  border: 2px dashed orange;
+} */
 
 .menu {
   font-size: 18px;
-  margin: 0px 0px 0px 0px;
+  margin: 0px 0px 4px 0px;
   background-color: white;
   width: 100%;
-  /* border: 1px dotted black; */
+  border: 0px dotted black;
   display: inline-block;
 }
 
@@ -39,23 +38,36 @@
   border: 1px solid #DDD2AD;
   margin: 0px;
   padding: 5px;
+  display: inline-block;
   /* border: 1px dotted black; */
 }
+
+.one   {
+  width: 100%;
+  background-color: #E9E2CB;
+ }
+.two   { width: 49%;  }
+.three { width: 32%;  }
 
 .tab.right {
   background-color: #FFFFFF;
   float: right;
-  width: 49%;
+}
+
+.tab.mid {
+  background-color: #FFFFFF;
+  margin: 0px 0px 0px 6px;
+  /* float: left; */
 }
 
 .tab.left {
   background-color: #E9E2CB;
   float: left;
-  width: 49%;
 }
 
-.tab.single {
-  background-color: #E9E2CB;
-  float: center;
-  width: 100%;
+.notices {
+  color: red;
+}
+.no-notices {
+  color: black;
 }

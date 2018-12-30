@@ -19,45 +19,62 @@ import { ActivatedRoute } from '@angular/router';
 export class DataComponent implements OnInit, OnDestroy {
 
   public activeTab;
-  public nTabs = 2;
+  public nTabs = 3;
   public tabNameLeft;
+  public tabNameMid;
   public tabNameRight;
   public tabNameSingle;
   public tabHighlightColour;
   private paramsSubs;
+  private myService;
+  private notificationsWaiting = false;
 
   constructor(
     private activatedRouter: ActivatedRoute,
+    private dataService: DataService
     ) {}
 
   ngOnInit(
 
   ) {
 
+    this.myService = this.dataService.newNotification.subscribe( (data) => {
+      this.notificationsWaiting = true;
+    });
+
     this.paramsSubs = this.activatedRouter.params.subscribe(params => {
-      if ( params.isCreate === 'true' ) {
+      if ( params.pageType === 'create' || params.id === '-1' ) {
         this.nTabs = 1;
       } else {
-        this.nTabs = 2;
+        this.nTabs = 3;
       }
+
+      if ( this.nTabs === 1 ) {
+        this.tabNameSingle = 'New Path Details';
+      } else
+      // if ( this.nTabs === 2 ) {
+      //   this.activeTab = 'left';
+      //   this.tabNameLeft = 'List';
+      //   this.tabNameRight = 'Detail';
+      // } else
+      if ( this.nTabs === 3 ) {
+        this.activeTab = 'left';
+        this.tabNameLeft = 'List';
+        this.tabNameMid = 'Detail';
+        this.tabNameRight = 'Feed';
+      }
+
+      this.tabHighlightColour = '#E9E2CB';
+
+
     });
 
 
-    if ( this.nTabs === 1 ) {
-      this.tabNameSingle = 'New Route Detail';
-    } else
-    if ( this.nTabs === 2 ) {
-      this.activeTab = 'left';
-      this.tabNameLeft = 'List';
-      this.tabNameRight = 'Detail';
-    }
-
-    this.tabHighlightColour = '#E9E2CB';
 
 
   } // ngOnInit
 
-  menuClick(item) {
+  menuClick(item: String) {
 
     this.activeTab = item;
 
@@ -76,10 +93,32 @@ export class DataComponent implements OnInit, OnDestroy {
         rightDiv.style.backgroundColor = this.tabHighlightColour;
       }
     }
+
+    if ( this.nTabs === 3 ) {
+      const leftDiv = document.getElementById('left');
+      const midDiv = document.getElementById('mid');
+      const rightDiv = document.getElementById('right');
+      if ( item === 'left' ) {
+        leftDiv.style.backgroundColor = this.tabHighlightColour;
+        midDiv.style.backgroundColor = '#FFFFFF';
+        rightDiv.style.backgroundColor = '#FFFFFF';
+      } else if ( item === 'mid' ) {
+        leftDiv.style.backgroundColor = '#FFFFFF';
+        midDiv.style.backgroundColor = this.tabHighlightColour;
+        rightDiv.style.backgroundColor = '#FFFFFF';
+      } else if ( item === 'right' ) {
+        this.notificationsWaiting = false;
+        this.dataService.notificationsRead.emit(true);
+        leftDiv.style.backgroundColor = '#FFFFFF';
+        midDiv.style.backgroundColor = '#FFFFFF';
+        rightDiv.style.backgroundColor = this.tabHighlightColour;
+      }
+    }
+
   }
 
   ngOnDestroy() {
-
+    this.myService.unsubscribe();
   }
 
 }

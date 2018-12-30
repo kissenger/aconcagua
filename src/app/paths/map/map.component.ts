@@ -36,7 +36,9 @@ export class MapComponent implements OnInit, OnDestroy {
   public menuItems: any;
   public isMenuSticky: Boolean;
   public checkBoxItems: any;
-  public radioButtonItems: any;
+  public radioItems: any;
+  public checkboxItems: any;
+  public showPlotOptions = true;
 
   // google map instances
   public map: google.maps.Map;
@@ -45,6 +47,7 @@ export class MapComponent implements OnInit, OnDestroy {
   // used in save path form popup
   public pathName: String;
   public description: String;
+  public isBatch = false;
 
   // recieved geoJson files from the backend
   public path: any;               // route/track data
@@ -61,6 +64,8 @@ export class MapComponent implements OnInit, OnDestroy {
   // other class variables used for flow control
   public subsActive: Boolean;
   public timer: NodeJS.Timer;
+
+  public feedService: any;
 
   constructor(
     private httpService: HttpService,
@@ -92,22 +97,43 @@ export class MapComponent implements OnInit, OnDestroy {
       this.pathType = params.type;
       this.pathId = params.id;
 
-      // Determine page type and get menu btns
+      // Determine page type
       if ( params.id === '-1' ) {
-        if ( typeof params.isCreate === 'undefined' ) { this.pageType = 'Review'; }
-      } else
-      if ( params.isCreate === 'true' ) { this.pageType = 'Create';
-      } else { this.pageType = 'Normal'; }
+        if ( typeof params.pageType === 'undefined' ) { this.pageType = 'review'; }
+
+      } else if (params.id === 'load-single') {
+        this.pageType = 'load-single';
+
+      } else if ( params.id === 'load-batch' ) {
+        this.pageType = 'load-batch';
+
+      } else {
+
+        if ( params.pageType === 'create' ) {
+          this.pageType = 'create';
+        } else {
+          this.pageType = 'normal';
+        }
+
+      }
+
+      // get definition of controls for this page
       const menu =  this.controls.getMenuButtons(this.pageType, this.pathType);
       this.menuItems = menu.btnArray;
       this.isMenuSticky = menu.isSticky;
-      console.log(this.isMenuSticky);
-
+      this.radioItems = this.controls.getRadioButtons(this.pageType, this.pathType)[0];
+      this.checkboxItems = this.controls.getCheckBoxes(this.pageType, this.pathType);
+      if ( typeof this.radioItems === 'undefined' && typeof this.checkboxItems[0] === 'undefined' ) {
+        this.showPlotOptions = false;
+      }
 
       // now do stuff depending on the types of path and path
       if ( typeof this.pathId !== 'undefined') {
 
-        if ( this.pageType === 'Normal' || this.pageType === 'Create') {
+        if ( this.pageType === 'load-single' ||  this.pageType === 'load-batch') {
+          document.getElementById('file-select').style.display = 'block';
+
+        } else if ( this.pageType === 'normal' || this.pageType === 'create') {
           // this is NOT review page
 
           this.httpService.getPathById(this.pathType, this.pathId, false).subscribe( (result) => {
@@ -119,18 +145,24 @@ export class MapComponent implements OnInit, OnDestroy {
               this.binary = result.geoBinary;
               this.contour = result.geoContour;
 
-              this.httpService.getMatchedTracks(this.pathId).subscribe( (res) => {
 
-                this.tracks = res['geoTracks'];
-                console.log(this.tracks);
-
-                // use timer to repeatedly attempt to trun checkbox active, until succesful
-                // this.subsActive = false;
-                // this.timer = setInterval( () => {
-                //   this.setInputEnabled(<HTMLElement>document.getElementById('Tracks'));
-                // }, 200);
+              this.feedService = this.dataService.newNotification.subscribe( (data) => {
 
               });
+
+              // **NEED TO DETECT IF THIS IS A NEWLY UPLOADED CHALLENGE, IF SO DONT LOAD TRACKS (YET)
+              // this.httpService.getMatchedTracks(this.pathId).subscribe( (res) => {
+
+              //   this.tracks = res['geoTracks'];
+              //   console.log(this.tracks);
+
+              //   // use timer to repeatedly attempt to trun checkbox active, until succesful
+              //   // this.subsActive = false;
+              //   // this.timer = setInterval( () => {
+              //   //   this.setInputEnabled(<HTMLElement>document.getElementById('Tracks'));
+              //   // }, 200);
+
+              // });
 
             } // if challenge page
 
@@ -138,7 +170,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
           }); // httpService subscription
 
-        } else if ( this.pageType === 'Review' ) {
+        } else if ( this.pageType === 'review' ) {
         // this is review page
 
           this.path = this.dataService.getStoredNewPath();
@@ -160,7 +192,6 @@ export class MapComponent implements OnInit, OnDestroy {
     console.log(this.path);
     console.log(this.binary);
     console.log(this.contour);
-    console.log(this);
 
     const that = this;
     this.map = new google.maps.Map(document.getElementById('map'), this.initData.getMapOptions(this.pageType));
@@ -186,7 +217,7 @@ export class MapComponent implements OnInit, OnDestroy {
         const featureId = String(feature.getId());
         const featureType = featureId.substring(0, featureId.indexOf('-'));
         lineStyles[featureType]['strokeColor'] = feature.getProperty('color');
-        if ( this.pageType === 'Create' ) {
+        if ( this.pageType === 'create' ) {
           lineStyles[featureType]['strokeOpacity'] = 0.5;
         } else {
           // THIS SHOULD NOT BE NEEDED, but somehow opacity=0.5 is persistant even with return call to getMapLineStyles
@@ -208,7 +239,7 @@ export class MapComponent implements OnInit, OnDestroy {
       /**
        * Specific to path create page only
        */
-      if ( this.pageType === 'Create' ) {
+      if ( this.pageType === 'create' ) {
 
         this.poly = new google.maps.Polyline({
           map: this.map,
@@ -274,57 +305,29 @@ export class MapComponent implements OnInit, OnDestroy {
  *
  */
 
-  loadSinglePath()      { this.controlFunctions.loadSinglePath(this.pathType); }
-  loadMultiplePaths()   { this.controlFunctions.loadMultiplePaths(this.pathType); }
-  addToChallenges() {this.controlFunctions.addToChallenges(this.pathId); }
+  loadSinglePath()       { document.getElementById('file-select-single').click(); }
+  loadMultiplePaths()    { document.getElementById('file-select-multiple').click(); }
+  addToChallenges()      { this.controlFunctions.addToChallenges(this.pathId); }
   removeFromChallenges() { this.controlFunctions.removeFromChallenges(this.pathId); }
-  deletePath()          { this.controlFunctions.deletePath(this.pathType, this.pathId);   }
-  createNewPath()       { this.controlFunctions.createNewPath(this.pathType, this.pathId);   }
-  exportPathToFile()    { this.controlFunctions.exportPathToFile(this.pathType, this.pathId);   }
-  saveCreatedPath()     { this.controlFunctions.saveCreatedPath(this.pathType, this.poly.getPath());   }
-  discardCreatedPath()  { this.controlFunctions.discardCreatedPath(this.pathType);    }
-  saveImportedPath()    { this.openForm();  }
-  discardImportedPath() { this.controlFunctions.discardImportedPath(this.pathType);   }
+  deletePath()           { this.controlFunctions.deletePath(this.pathType, this.pathId);   }
+  createNewPath()        { this.controlFunctions.createNewPath(this.pathType, this.pathId);   }
+  exportPathToFile()     { this.controlFunctions.exportPathToFile(this.pathType, this.pathId);   }
+  saveCreatedPath()      { this.controlFunctions.saveCreatedPath(this.pathType, this.poly.getPath());   }
+  discardCreatedPath()   { this.controlFunctions.discardCreatedPath(this.pathType);    }
+  // saveImportedPath()     { this.controlFunctions.saveCreatedPath(this.pathType, this.poly.getPath());  }
+  discardImportedPath()  { this.controlFunctions.discardImportedPath(this.pathType);   }
 
-/**
- *
- * SAVE IMPORTED PATH ACTIONS
- *
- */
 
-  openForm() {
-    this.pathName = this.path.features[0].name;
-    if ( !this.description ) { this.description = 'Say something fab about your activity...';
-    } else { this.description = this.path.features[0].name; }
-    document.getElementById('myForm').style.display = 'block';
-  }
+  saveImportedPath() {
 
-  onCancel() {
-    document.getElementById('myForm').style.display = 'none';
-  }
+    const d = this.dataService.getCreateRouteDetails();
+    console.log(d);
 
-  onSave() {
-
-    const nameElement: HTMLInputElement = document.getElementById('name') as HTMLInputElement;
-    const descElement: HTMLInputElement = document.getElementById('description') as HTMLInputElement;
-    const payload = {};
-
-    document.getElementById('myForm').style.display = 'none';
-
-    // Only return data to the backend if it has changed
-    if ( nameElement.value !== this.pathName ) {
-      payload['newName'] = nameElement.value;
-    }
-    if ( descElement.value !== this.description ) {
-      payload['newDesc'] = descElement.value;
-    }
-
-    this.httpService.savePath(this.pathType, this.pathId, payload).subscribe( (result) => {
+    this.httpService.savePath(this.pathType, this.pathId, d).subscribe( (result) => {
       this.router.navigate(['paths', this.pathType, this.pathId]);
-      console.log(result);
     });
-
   }
+
 
 /**
  *
@@ -370,18 +373,40 @@ export class MapComponent implements OnInit, OnDestroy {
   }
 
   closePath() {
-    const firstPoint = this.createdPath.getAt(this.createdPath.getLength() - 1);
-    const lastPoint = this.createdPath.getAt(0);
-    this.geoService.snapToRoad(firstPoint, lastPoint).then( (np) => {
-      np.map( (x) => this.createdPath.push(x) );
-      this.pathHistory.push(np.length);
-      this.dataService.fromCreateToDetail.emit(
-        this.geoService.pathStats(this.createdPath)
-      );
-    });
+    if ( this.isSnapOn === true ) {
+
+      const firstPoint = this.createdPath.getAt(this.createdPath.getLength() - 1);
+      const lastPoint = this.createdPath.getAt(0);
+      this.geoService.snapToRoad(firstPoint, lastPoint).then( (np) => {
+        np.map( (x) => this.createdPath.push(x) );
+        this.pathHistory.push(np.length);
+        this.dataService.fromCreateToDetail.emit(
+          this.geoService.pathStats(this.createdPath)
+        );
+      });
+    } else {
+      this.createdPath.push(this.createdPath.getAt(0));
+      this.pathHistory.push(1);
+    }
   }
 
+  snapToRoads () {
 
+    const cb = <HTMLInputElement>document.getElementById('inputRoad Snap');
+
+    console.log('click snap');
+    if ( cb.checked === true ) {
+      this.isSnapOn = true;
+    } else {
+      this.isSnapOn = false;
+    }
+  }
+
+/**
+ *
+ * CREATE PATH ACTIONS
+ *
+ */
 
   setInputEnabled(div) {
 
@@ -414,45 +439,31 @@ export class MapComponent implements OnInit, OnDestroy {
    *
    */
 
-//   cbShowMileMarkers() {
-//     const cb = <HTMLInputElement>document.getElementById('inputMile Markers');
+  showMileMarkers() {
+    const cb = <HTMLInputElement>document.getElementById('inputMile Markers');
 
-//     if ( cb.checked === true ) {
-//       this.path.features[0].properties.stats.kmSplits.forEach( (c, i) => {
-//         const coord = this.path.features[0].geometry.coordinates[c[0]];
-//           this.markers.push(new google.maps.Circle({
-//             strokeColor: '#FF0000',
-//             strokeOpacity: 0.8,
-//             strokeWeight: 0,
-//             fillColor: '#FF0000',
-//             fillOpacity: 0.5,
-//             map: this.map,
-//             center: {'lat': coord[1], 'lng': coord[0]},
-//             radius: 100
-//           }));
-//         // this.markers.push(new google.maps.Marker({
-//         //   position: {'lat': coord[1], 'lng': coord[0]},
-//         //   label: (i + 1).toString(),
-//         //   map: this.map
-//         // }) );
-//       });
-//     } else {
+    if ( cb.checked === true ) {
+      this.path.features[0].properties.stats.kmSplits.forEach( (c, i) => {
+        const coord = this.path.features[0].geometry.coordinates[c[0]];
+          this.markers.push(new google.maps.Circle({
+            strokeColor: '#FF0000',
+            strokeOpacity: 0.8,
+            strokeWeight: 0,
+            fillColor: '#FF0000',
+            fillOpacity: 0.5,
+            map: this.map,
+            center: {'lat': coord[1], 'lng': coord[0]},
+            radius: 100
+          }));
+      });
+    } else {
 
-//       this.markers.forEach( (m) => { m.setMap(null); });
-//     }
+      this.markers.forEach( (m) => { m.setMap(null); });
+    }
 
-//   }
+  }
 
-//   cbSnap () {
 
-//     const cb = <HTMLInputElement>document.getElementById('inputRoad Snap');
-
-//     console.log('click snap');
-//     if ( cb.checked === true ) {
-//       this.isSnapOn = true;
-//     } else {
-//       this.isSnapOn = false;
-//     }
 
 //   }
 
@@ -524,80 +535,136 @@ export class MapComponent implements OnInit, OnDestroy {
 //     }
 //   }
 
-//   radioClick() {
+  radioClick() {
 
-//     const r = <HTMLInputElement>document.getElementById('inputRoute');
-//     const b = <HTMLInputElement>document.getElementById('inputBinary');
-//     const c = <HTMLInputElement>document.getElementById('inputContour');
+    console.log('click');
 
-//     if ( r.checked ) {
-//       // Route button is active
+    const r = <HTMLInputElement>document.getElementById('inputRoute');
+    const b = <HTMLInputElement>document.getElementById('inputBinary');
+    const c = <HTMLInputElement>document.getElementById('inputContour');
 
-//       // remove data
-//       try {
-//         this.binary.features.forEach( (ftr, i) => {
-//           this.map.data.remove(this.map.data.getFeatureById('binary-' + i));
-//         });
-//       } catch {}
-//       try {
-//         this.contour.features.forEach( (ftr, i) => {
-//           this.map.data.remove(this.map.data.getFeatureById('contour-' + i));
-//         });
-//       } catch {}
-//       // add route
-//       this.path.features[0]['id'] = 'route-';
-//       this.map.data.addGeoJson(this.path.features[0]);
+    if ( r.checked ) {
+      console.log('click route');
+      // Route button is active
 
-//     } else
+      // remove data
+      try {
+        this.binary.features.forEach( (ftr, i) => {
+          this.map.data.remove(this.map.data.getFeatureById('binary-' + i));
+        });
+      } catch {}
+      try {
+        this.contour.features.forEach( (ftr, i) => {
+          this.map.data.remove(this.map.data.getFeatureById('contour-' + i));
+        });
+      } catch {}
+      // add route
+      this.path.features[0]['id'] = 'route-';
+      this.map.data.addGeoJson(this.path.features[0]);
 
-//     if ( b.checked ) {
-//       // Binary button is active
+    } else
 
-//       // remove data
-//       try {
-//         this.map.data.remove(this.map.data.getFeatureById('route-'));
-//       } catch {}
-//       try {
-//         this.contour.features.forEach( (ftr, i) => {
-//           this.map.data.remove(this.map.data.getFeatureById('contour-' + i));
-//         });
-//       } catch {}
-//       // add binary
-//       this.binary.features.forEach( (ftr, i) => {
-//         ftr.id = 'binary-' + i;
-//         this.map.data.addGeoJson(ftr);
-//       });
-//     } else
+    if ( b.checked ) {
+      // Binary button is active
 
-//     if ( c.checked ) {
-//       // Contour button is active
+      // remove data
+      try {
+        this.map.data.remove(this.map.data.getFeatureById('route-'));
+      } catch {}
+      try {
+        this.contour.features.forEach( (ftr, i) => {
+          this.map.data.remove(this.map.data.getFeatureById('contour-' + i));
+        });
+      } catch {}
+      // add binary
+      this.binary.features.forEach( (ftr, i) => {
+        ftr.id = 'binary-' + i;
+        this.map.data.addGeoJson(ftr);
+      });
+    } else
 
-//       // remove data
-//       try {
-//         this.map.data.remove(this.map.data.getFeatureById('route-'));
-//       } catch {}
-//       try {
-//         this.binary.features.forEach( (ftr, i) => {
-//           this.map.data.remove(this.map.data.getFeatureById('binary-' + i));
-//         });
-//       } catch {}
-//       // add contour
-//       this.contour.features.forEach( (ftr, i) => {
-//         ftr.id = 'contour-' + i;
-//         this.map.data.addGeoJson(ftr);
-//       });
-//     }
-//   }
+    if ( c.checked ) {
+      // Contour button is active
+
+      // remove data
+      try {
+        this.map.data.remove(this.map.data.getFeatureById('route-'));
+      } catch {}
+      try {
+        this.binary.features.forEach( (ftr, i) => {
+          this.map.data.remove(this.map.data.getFeatureById('binary-' + i));
+        });
+      } catch {}
+      // add contour
+      this.contour.features.forEach( (ftr, i) => {
+        ftr.id = 'contour-' + i;
+        this.map.data.addGeoJson(ftr);
+      });
+    }
+  }
 
 
 /**
  *
- * Save a path form display and clickers
+ * Action on import file clicker
  *
  */
 
-  // showGetFilesUI() {
-  // }
+onFilePicked(event: Event, type: String) {
+
+  // Get multiple file names
+  const files = (event.target as HTMLInputElement).files;        // multiple files
+  document.documentElement.style.cursor = 'wait';
+
+  console.log(type);
+  if ( type === 'single' ) {
+    const fileData = new FormData();
+    fileData.append('filename', files[0], files[0].name);
+
+    // TODO: this can be smartened up but requires combining import functions on backend
+    if ( this.pathType === 'route' ) {
+      this.httpService.importRoute(fileData).subscribe( (a) => {
+        document.documentElement.style.cursor = 'default';
+        this.dataService.storeNewPath(a.geoJson);
+        this.router.navigate(['paths', this.pathType, '-1']);
+      });
+    } else {
+      this.httpService.importTracks(fileData, 'single').subscribe( (a) => {
+        document.documentElement.style.cursor = 'default';
+        this.dataService.storeNewPath(a.geoJson);
+        this.router.navigate(['paths', this.pathType, '-1']);
+      });
+    }
+
+  } else {
+
+    let returnCount = -1;
+    const numberOfFiles = (files.length - 1);
+
+    for (let i = 0; i <= numberOfFiles; i++) {
+
+      const fileData = new FormData();
+      fileData.append('filename', files[i], files[i].name);
+
+      this.httpService.importTracks(fileData, 'batch').subscribe( (a) => {
+
+        returnCount++;
+        console.log('file: ' + returnCount + ' of ' + numberOfFiles);
+
+        if ( returnCount === numberOfFiles ) {
+          // had back the number of files sent
+
+          document.documentElement.style.cursor = 'default';
+          this.router.navigate(['paths', this.pathType]);
+        }
+
+      });
+    }
+
+
+  }
+
+}
 
 
 
@@ -618,190 +685,3 @@ export class MapComponent implements OnInit, OnDestroy {
 
 } // export class
 
-
-/**
- * DEFINE MAP CONTROLS
- */
-
-
-  // pushControls() {
-
-  //   // get controls from button service
-  //   this.ctrls = this.buttonsService.getMenuBtns(this.pageType, this.pathType);
-
-  //   // add click functions into the buttons array
-  //   this.ctrls.btns.forEach( b => { b.clickFunction = this[b.clickFunctionName].bind(this); });
-  //   this.ctrls.checks.forEach( b => { b.clickFunction = this[b.clickFunctionName].bind(this); });
-  //   this.ctrls.radios[0].forEach( b => {b.clickFunction = this[b.clickFunctionName].bind(this); });
-
-  //   // create the menus and push to map
-  //   this.createDropDownMenu(this.ctrls.btns, 'LEFT_TOP');
-  //   this.createRadiosAndCheckBoxes(this.ctrls.checks, this.ctrls.radios[0], 'LEFT_BOTTOM');
-
-  // }
-
-  // createDropDownMenu(ctrls, position) {
-
-  //   const that = this;
-  //   const masterDiv = document.createElement('div');
-
-  //   ctrls.forEach( (thisCtrl) => {
-
-  //     // create outer div, apply formatting
-  //     const outerDiv = document.createElement('div');
-  //     const innerDiv = document.createElement('div');
-
-  //     // set some attributes
-  //     outerDiv.id = thisCtrl.id;
-  //     if ( thisCtrl.id !== 0 ) {
-  //       thisCtrl.isDisplayed = false;
-  //       outerDiv.style.display = 'none';
-  //     }
-
-  //     // apply formatting
-  //     if ( thisCtrl.id === 0 ) {
-  //       this.outerDivFormatMenu(outerDiv, thisCtrl);
-  //       this.innerDivFormatMenu(innerDiv, thisCtrl);
-  //     } else {
-  //       // this.outerDivFormat(outerDiv, thisCtrl);
-  //       this.outerDivFormat(outerDiv, thisCtrl);
-  //       this.innerDivFormat(innerDiv, thisCtrl);
-  //     }
-
-  //     // assemble
-  //     masterDiv.appendChild(outerDiv);
-  //     outerDiv.appendChild(innerDiv);
-
-  //     // attach listeners
-  //     if ( thisCtrl.isEnabled ) {
-  //       innerDiv.addEventListener('click', thisCtrl.clickFunction);
-  //       innerDiv.addEventListener('mouseover', () => { innerDiv.style.backgroundColor = that.btnLooks.bgHover; });
-  //       innerDiv.addEventListener('mouseout', () => { innerDiv.style.backgroundColor = that.btnLooks.bgEnabled; });
-  //     }
-
-  //   });
-  //   // this.map.controls[google.maps.ControlPosition[position]].push(masterDiv);
-
-  // }
-
-  // btnMenuClick() {
-  //   this.ctrls.btns.forEach( ctrl => {
-  //     if ( ctrl.id !== 0 ) {
-  //       // not menu button
-  //       document.getElementById(ctrl.id).style.display = ctrl.isDisplayed ? 'none' : 'block';
-  //       ctrl.isDisplayed = !ctrl.isDisplayed;
-  //     }
-  //   });
-  // }
-
-  // createRadiosAndCheckBoxes(cbs, rds, position) {
-
-  //   const masterDiv = document.createElement('div');
-
-  //   cbs.forEach( (checkbox) => {
-
-  //     // apply div formatting - this is the same regardless of control type
-  //     const outerDiv = document.createElement('div');
-  //     const innerDiv = document.createElement('div');
-  //     const inputDiv = document.createElement('input');
-
-  //     this.outerDivFormat(outerDiv, checkbox);
-  //     this.innerDivFormat(innerDiv, checkbox);
-  //     this.cbFormat(inputDiv, checkbox);
-
-  //     masterDiv.appendChild(outerDiv);
-  //     outerDiv.appendChild(innerDiv);
-  //     innerDiv.appendChild(inputDiv);
-
-  //     inputDiv.addEventListener('click', checkbox.clickFunction);
-
-  //   });
-
-  //   rds.forEach( (radio) => {
-
-  //     // apply div formatting - this is the same regardless of control type
-  //     const outerDiv = document.createElement('div');
-  //     const innerDiv = document.createElement('div');
-  //     const inputDiv = document.createElement('input');
-
-  //     this.outerDivFormat(outerDiv, radio);
-  //     this.innerDivFormat(innerDiv, radio);
-  //     this.radioFormat(inputDiv, radio);
-
-  //     masterDiv.appendChild(outerDiv);
-  //     outerDiv.appendChild(innerDiv);
-  //     innerDiv.appendChild(inputDiv);
-
-  //     inputDiv.addEventListener('click', radio.clickFunction);
-
-  //   });
-
-  //   // this.map.controls[google.maps.ControlPosition[position]].push(masterDiv);
-
-  // }
-
-  // outerDivFormat(div, def) {
-  //   div.style.opacity = '0.8';
-  //   div.style.width = '150px';
-  //   div.style.cursor = 'pointer';
-  //   div.style.marginTop = '-1px';
-  //   div.style.textAlign = 'left';
-  //   div.style.marginLeft = '2px';
-  //   div.style.border = '#808080 1px solid';
-  // }
-
-  // innerDivFormat(div, def) {
-  //   div.setAttribute('isEnabled', def.isEnabled);
-  //   div.id = def.text;
-  //   div.style.backgroundColor = def.isEnabled ? this.btnLooks.bgEnabled : this.btnLooks.bgDisabled;
-  //   div.style.color = def.isEnabled ? this.btnLooks.txtEnabled : this.btnLooks.txtDisabled;
-  //   div.style.fontFamily = 'Roboto,Arial,sans-serif';
-  //   div.style.fontSize = '12px';
-  //   div.style.lineHeight = '25px';
-  //   div.style.paddingLeft = '5px';
-  //   div.style.paddingRight = '5px';
-  //   div.innerHTML = def.text;
-  // }
-
-  // outerDivFormatMenu(div, def) {
-  //   div.style.opacity = '0.8';
-  //   div.style.width = '50px';
-  //   div.style.cursor = 'pointer';
-  //   div.style.marginTop = '2px';
-  //   div.style.marginBottom = '5px';
-  //   div.style.textAlign = 'center';
-  //   div.style.marginLeft = '2px';
-  //   div.style.border = '#808080 1px solid';
-  // }
-
-  // innerDivFormatMenu(div, def) {
-  //   div.setAttribute('isEnabled', def.isEnabled);
-  //   div.id = def.text;
-  //   div.style.backgroundColor = def.isEnabled ? this.btnLooks.bgEnabled : this.btnLooks.bgDisabled;
-  //   div.style.color = def.isEnabled ? this.btnLooks.txtEnabled : this.btnLooks.txtDisabled;
-  //   div.style.fontFamily = 'Roboto,Arial,sans-serif';
-  //   div.style.fontSize = '12px';
-  //   div.style.lineHeight = '25px';
-  //   div.style.paddingLeft = '5px';
-  //   div.style.paddingRight = '5px';
-  //   div.innerHTML = def.text;
-  // }
-
-  // cbFormat(cb, def) {
-  //   cb.type = 'checkbox';
-  //   cb.id = 'input' + def.text;
-  //   cb.disabled = !def.isEnabled;
-  //   cb.checked = def.isChecked;
-  //   cb.style.paddingLeft = '5px';
-  //   cb.style.paddingRight = '5px';
-  // }
-
-  // radioFormat(cb, def) {
-  //   cb.type = 'radio';
-  //   cb.name = 'radioGroup';
-  //   cb.id = 'input' + def.text;
-  //   cb.disabled = !def.isEnabled;
-  //   cb.checked = def.isChecked;
-  //   cb.style.paddingLeft = '5px';
-  //   cb.style.paddingRight = '5px';
-  // }

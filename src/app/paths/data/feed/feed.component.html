@@ -1,0 +1,17 @@
+
+
+<div class='container'>
+  <div *ngFor="let notice of notifications">
+    <div
+      id={{notice}}
+      (click)="onClick(notice.pathId); hasBeenClicked=true"
+      [ngClass]="hasBeenClicked ? 'been-clicked' : 'not-been-clicked'"
+      class="item">
+
+      <div class="message">
+          {{notice.message}}
+      </div>
+
+    </div>
+  </div>
+</div>

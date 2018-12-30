@@ -16,7 +16,7 @@
 }
 
 /**********************************
- *   Popup save path form
+ *   Manu controls on map
  **********************************/
 
  /* contains dropdown menu */
@@ -39,7 +39,6 @@
   z-index: 2;
   border: red 0px dotted;
 }
-
 
 
 .menu-item{
@@ -67,7 +66,7 @@
 }
 
 .menu-item.outer{
-  width: 150px;
+  /* width: 150px; */
   margin: 0px 0px 0px 0px;
 }
 
@@ -86,15 +85,6 @@
 }
 
 
-/* .menu-sub-item-outer {
-  opacity: 0.8;
-  width: 150px;
-  cursor: pointer;
-  margin: 2px;
-  text-align: left;
-  border: #808080 1px solid;
-}
-
 .menu-sub-item-inner {
   font-size: 12px;
   line-height: 25px;
@@ -103,8 +93,76 @@
   margin: 2px;
   text-align: left;
   border: #808080 1px solid;
-} */
+}
 
+/**********************************
+ *   Options
+ **********************************/
+ .options-container {
+  position: absolute;
+  float: left;
+  width: 120px;
+  opacity: 0.8;
+  background-color:  #e0e0e0;
+  bottom: 5px;
+  left: 5px;
+  z-index: 3;
+  border:  #808080 1px solid;
+  transform: translateY (-100%);
+}
+
+.options-header {
+  text-align: center;
+  font-size: 12px;
+  border-bottom: #808080 1px solid;
+}
+
+/**********************************
+ *   Radio buttons
+ **********************************/
+
+.radio-item.outer{
+  margin: 0px 0px 0px 0px;
+  border-top: #808080 1px dashed;
+}
+
+.radio-item.inner{
+  font-size: 12px;
+  line-height: 25px;
+  margin: -1px 0px 0px 0px;
+  padding: 0px 5px 0px 5px;
+  border: red 0px dotted;
+}
+
+.radio{
+  margin: 0px 0px 0px 0px;
+  background-color: #e0e0e0;
+  float: right;
+  border: orange 0px solid;
+}
+
+
+/**********************************
+ *   Checkboxes
+ **********************************/
+
+.cb-item.outer{
+  margin: 0px 0px 0px 0px;
+}
+
+.cb-item.inner{
+  font-size: 12px;
+  line-height: 25px;
+  margin: -1px 0px 0px 0px;
+  padding: 0px 5px 0px 5px;
+  border: red 0px dotted;
+}
+
+.checkbox{
+  margin: 0px 0px 0px 0px;
+  float: right;
+  border: orange 0px solid;
+}
 
 /* .open-button {
   background-color: #555;
@@ -136,10 +194,19 @@
 /* Add styles to the form container */
 .form-container {
   color: black;
-  max-width: 500px;;
+  max-width: 500px;
   padding: 10px;
   background-color: white;
 }
+
+/**********************************
+ *   file-select
+ **********************************/
+
+ .file-selector {
+  display: none;
+}
+
 
 
 

@@ -31,7 +31,7 @@ export class CreateDetailComponent implements OnInit, OnDestroy {
     this.myService = this.dataService.fromCreateToDetail.subscribe( (dataIn) => {
 
       this.distance = dataIn.distance;
-      console.log(this.distance);
+      // console.log(this.distance);
 
     });
 

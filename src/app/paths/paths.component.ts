@@ -23,15 +23,16 @@ export class PathsComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
 
-    this.paramSubs = this.activatedRouter.params.subscribe(params => {
-      this.showDiv = params.id === '-1' ? false : true;
-    });
+    // this.paramSubs = this.activatedRouter.params.subscribe(params => {
+    //   this.showDiv = params.id === '-1' ? false : true;
+    // });
+
   }
 
   ngOnDestroy() {
 
     // unsubscribe from subscriptions
-    this.paramSubs.unsubscribe();
+    // this.paramSubs.unsubscribe();
 
     // flush mongo of unsaved paths
     this.http.get('http://localhost:3000/flush')

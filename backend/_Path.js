@@ -48,20 +48,31 @@ class Path  {
     if (this.heartRate) params.heartRate = this.heartRate;
     if (this.cadence) params.cadence = this.cadence;
 
+    const category = this.category();
+    const name = typeof this.name === 'undefined' ? "" : this.name;
+    const stats = this.analysePath();
+
     return {
       userId: userId,
       isSaved: isSaved,
       pathType: this.pathType,
       startTime: this.startTime,
-      category: this.category(),
-      name: typeof this.name === 'undefined' ? "" : this.name,
+      category: category,
+      name: name,
       description: this.description,
       geometry: {
         type: 'LineString',
         coordinates: this.lngLat
       },
       params: params,
-      stats: this.analysePath(),
+      stats: stats,
+      // listStats: {
+      //   name: name,
+      //   category: category,
+      //   startTime: this.startTime,
+      //   pathDistance: stats.distance,
+      //   duration: stats.duration,
+      // },
     }
   }
 

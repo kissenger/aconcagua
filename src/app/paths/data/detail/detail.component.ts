@@ -25,6 +25,7 @@ export class DetailComponent implements OnInit, OnDestroy {
   public showTime = false;
   public showElev = false;
   public showMatchStats = false;
+  public isData = false;
 
   constructor(
     private dataService: DataService,
@@ -34,21 +35,36 @@ export class DetailComponent implements OnInit, OnDestroy {
   ngOnInit() {
 
     // get data from map
-    const dataFromMap = this.dataService.getStoredData();
-    console.log(dataFromMap);
+
+    this.myService = this.dataService.fromMapToData.subscribe( (dataFromMap) => {
+
+      this.isData = true;
+
+      this.pathStats = dataFromMap.path.stats;
+      if ( this.pathStats.startTime ) { this.showTime = this.pathStats.startTime.length > 1 ? true : false; }
+      this.showElev = this.pathStats.ascent !== 0 ? true : false;
+
+      this.matchStats = dataFromMap.match;
+      this.showMatchStats = this.matchStats ? true : false;
+
+    });
+
+
+    // const dataFromMap = this.dataService.getStoredData();
+    // console.log(dataFromMap);
 
     // path data
-    this.pathStats = dataFromMap.path.stats;
-    console.log(this.pathStats);
-    if ( this.pathStats.startTime ) { this.showTime = this.pathStats.startTime.length > 1 ? true : false; }
-    this.showElev = this.pathStats.ascent !== 0 ? true : false;
+    // this.pathStats = dataFromMap.path.stats;
+    // console.log(this.pathStats);
+    // if ( this.pathStats.startTime ) { this.showTime = this.pathStats.startTime.length > 1 ? true : false; }
+    // this.showElev = this.pathStats.ascent !== 0 ? true : false;
 
-    // match data
-    this.matchStats = dataFromMap.match;
-    console.log(this.matchStats);
-    console.log(!!this.matchStats);
+    // // match data
+    // this.matchStats = dataFromMap.match;
+    // console.log(this.matchStats);
+    // console.log(!!this.matchStats);
 
-    this.showMatchStats = this.matchStats ? true : false;
+    // this.showMatchStats = this.matchStats ? true : false;
 
   }
 

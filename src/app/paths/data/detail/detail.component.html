@@ -1,4 +1,4 @@
-<div class='container'>
+<div *ngIf="isData" class='container'>
   Distance: {{pathStats.distance/1000 | number: '1.1-1'}}km<br>
   <div *ngIf="showTime">
     Duration: {{utils.formatDuration(pathStats.duration)}}<br>

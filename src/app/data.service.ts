@@ -18,6 +18,8 @@ export class DataService {
   fromLoadToMap = new EventEmitter();
   fromMapToData = new EventEmitter();
   fromCreateToDetail = new EventEmitter();
+  newNotification = new EventEmitter();
+  notificationsRead = new EventEmitter();
 
   storeNewPath(data) {
     this.storedPath = data;

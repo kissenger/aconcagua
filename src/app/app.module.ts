@@ -12,6 +12,7 @@ import { HttpService } from './http.service';
 import { UtilsService } from './utils.service';
 import { GeoService } from './geo.service';
 import { TokenInterceptorService } from './token-interceptor.service';
+import { WebsocketService } from './websocket.service';
 
 // Local imports: components
 import { AppComponent } from './app.component';
@@ -20,12 +21,12 @@ import { HomeComponent } from './home/home.component';
 import { FooterComponent } from './footer/footer.component';
 import { HeaderComponent } from './header/header.component';
 import { PathsComponent } from './paths/paths.component';
-import { LoadComponent } from './paths/load/load.component';
 import { CreateComponent } from './paths/create/create.component';
 import { MapComponent } from './paths/map/map.component';
 import { DataComponent } from './paths/data/data.component';
 import { ListComponent } from './paths/data/list/list.component';
 import { DetailComponent } from './paths/data/detail/detail.component';
+import { FeedComponent } from './paths/data/feed/feed.component';
 import { CreateDetailComponent } from './paths/data/create-detail/create-detail.component';
 import { SummaryComponent } from './paths/data/summary/summary.component';
 import { LoginComponent } from './login/login.component';
@@ -47,11 +48,11 @@ import { ControlFunctions } from './controlfunctions.service';
     DetailComponent,
     CreateDetailComponent,
     SummaryComponent,
-    LoadComponent,
     ListComponent,
     CreateComponent,
     LoginComponent,
-    RegisterComponent
+    RegisterComponent,
+    FeedComponent
   ],
   imports: [
     BrowserModule,
@@ -66,6 +67,7 @@ import { ControlFunctions } from './controlfunctions.service';
     UtilsService,
     GeoService,
     AuthGuard,
+    WebsocketService,
     {
       provide: HTTP_INTERCEPTORS,
       useClass: TokenInterceptorService,

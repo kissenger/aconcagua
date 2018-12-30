@@ -25,8 +25,8 @@ export class SummaryComponent implements OnInit, OnDestroy {
   public pathDescription = '';
   public paramsSubs;
   public isCreatePage;
-  public newName;
-  public newDesc;
+  private newName;
+  private newDesc;
 
   constructor(
     private dataService: DataService,
@@ -36,16 +36,19 @@ export class SummaryComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
 
+    // intended to reset form content when uploading multiple single files, but not working
+    this.newName = '';
+    this.newDesc = '';
+
     this.paramsSubs = this.activatedRouter.params.subscribe(params => {
 
-      if ( params.isCreate === 'true' ) {
+      if ( params.pageType === 'create' || params.id === '-1') {
         // this is a route create page:
-
         this.isCreatePage = true;
         this.onChange(); // intialises data on storage
 
       } else {
-        // not route create page: listen to data coming from map component
+        // not create page: listen to data coming from map component
 
         this.isCreatePage = false;
         this.myService = this.dataService.fromMapToData.subscribe( (dataFromMap) => {

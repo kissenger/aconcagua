@@ -9,10 +9,10 @@
 
     <div *ngIf="nTabs === 1">
       <div class='menu'>
-        <div class="tab single">{{tabNameSingle}}</div>
+        <div class="tab one">{{tabNameSingle}}</div>
       </div>
 
-      <div class="tab-content-left">
+      <div class="tab-content-mid">
           <app-create-detail></app-create-detail>
       </div>
 
@@ -20,20 +20,46 @@
 
     <div *ngIf="nTabs === 2">
       <div class='menu'>
-        <div class="tab left" id='left' (click)="menuClick('left')">{{tabNameLeft}}</div>
-        <div class="tab right" id='right' (click)="menuClick('right')">{{tabNameRight}}</div>
+        <div class="tab two left" id='left' (click)="menuClick('left')">{{tabNameLeft}}</div>
+        <div class="tab two right" id='right' (click)="menuClick('right')">{{tabNameRight}}</div>
       </div>
 
-      <div *ngIf="activeTab === 'left'" class="tab-content-left">
+      <div [hidden]="activeTab !== 'left'" class="tab-content-left">
           <app-list></app-list>
       </div>
 
-      <div *ngIf="activeTab === 'right'" class="tab-content-right">
+      <div [hidden]="activeTab !== 'right'" class="tab-content-right">
           <app-detail></app-detail>
       </div>
+
     </div>
 
 
+    <div *ngIf="nTabs === 3">
+      <div class='menu'>
+        <div class="tab three left"  id='left'  (click)="menuClick('left')">  {{tabNameLeft}} </div>
+        <div class="tab three mid"   id='mid'   (click)="menuClick('mid')">   {{tabNameMid}}  </div>
+        <div
+        class="tab three right"
+        [ngClass]="notificationsWaiting ? 'notices' : 'no-notices'"
+        id='right'
+        (click)="menuClick('right')"> {{tabNameRight}}</div>
+
+      </div>
+
+      <div [hidden]="activeTab !== 'left'" class="tab-content-left">
+          <app-list></app-list>
+      </div>
+
+      <div [hidden]="activeTab !== 'mid'" class="tab-content-mid">
+        <app-detail></app-detail>
+      </div>
+
+      <div [hidden]="activeTab !== 'right'" class="tab-content-right">
+          <app-feed></app-feed>
+      </div>
+
+    </div>
 
   </div>
 </div>

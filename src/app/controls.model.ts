@@ -21,9 +21,9 @@ export class Controls {
     const radioButtons = this.initialisationData.getRadioButtons();
 
     // determine button array depending on types of page and path
-    if ( pageType === 'Review' ) {
+    if ( pageType === 'review' ) {
 
-    } else if ( pageType === 'Normal' ) {
+    } else if ( pageType === 'normal' ) {
       if ( pathType === 'route') {
 
       } else if ( pathType === 'track') {
@@ -33,8 +33,11 @@ export class Controls {
         radioArray.push(radioButtons.radioPlotOptions);
       }
 
-    } else if ( pageType === 'Create' ) {
+    } else if ( pageType === 'create' ) {
       if ( pathType === 'route') {
+        radioArray.push(radioButtons.radioPlotOptions);
+      }
+      if ( pathType === 'challenge') {
         radioArray.push(radioButtons.radioPlotOptions);
       }
 
@@ -50,9 +53,9 @@ export class Controls {
     const checkBoxes = this.initialisationData.getCheckBoxes();
 
     // determine button array depending on types of page and path
-    if ( pageType === 'Review' ) {
+    if ( pageType === 'review' ) {
 
-    } else if ( pageType === 'Normal' ) {
+    } else if ( pageType === 'normal' ) {
       if ( pathType === 'route') {
         cbArray.push(
           checkBoxes.cbMileMarkers
@@ -71,8 +74,13 @@ export class Controls {
         );
       }
 
-    } else if ( pageType === 'Create' ) {
+    } else if ( pageType === 'create' ) {
       if ( pathType === 'route') {
+        cbArray.push(
+          checkBoxes.cbSnap
+        );
+      }
+      if ( pathType === 'challenge') {
         cbArray.push(
           checkBoxes.cbSnap
         );
@@ -92,41 +100,51 @@ export class Controls {
     const menuBtns = this.initialisationData.getMenuBtns();
 
     // determine button array depending on types of page and path
-    if ( pageType === 'Review' ) {
+    if ( pageType === 'review' ) {
       isSticky = true;
       btnArray.push(
         menuBtns.btnSaveImported, menuBtns.btnDiscardImported
       );
 
-    } else if ( pageType === 'Normal' ) {
+    } else if ( pageType === 'normal' ) {
       if ( pathType === 'route') {
         isSticky = false;
         btnArray.push(
           menuBtns.btnLoad,
-          menuBtns.btnBatch,
           menuBtns.btnDelete,
+          menuBtns.btnCreateRouteOnRoute,
+          menuBtns.btnExport,
           menuBtns.btnUseAsChallenge
         );
 
       } else if ( pathType === 'track') {
         isSticky = false;
         btnArray.push(
-          menuBtns.btnDelete,
           menuBtns.btnLoad,
-          menuBtns.btnBatch
+          menuBtns.btnBatch,
+          menuBtns.btnDelete
         );
 
       } else
       if ( pathType === 'challenge') {
         isSticky = false;
         btnArray.push(
-          menuBtns.btnCreate,
+          menuBtns.btnCreateRouteOnChall,
           menuBtns.btnRemoveChallenge
         );
       }
 
-    } else if ( pageType === 'Create' ) {
+    } else if ( pageType === 'create' ) {
       if ( pathType === 'challenge') {
+        isSticky = true;
+        btnArray.push(
+          menuBtns.btnUndo,
+          menuBtns.btnClear,
+          menuBtns.btnClose,
+          menuBtns.btnSaveCreated,
+          menuBtns.btnDiscardCreated );
+      }
+      if ( pathType === 'route') {
         isSticky = true;
         btnArray.push(
           menuBtns.btnUndo,

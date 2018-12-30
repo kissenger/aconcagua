@@ -20,6 +20,14 @@ const pathSchema = mongoose.Schema({
     heartRate: {type: [Number]},
     cadence: {type: [Number]}
   },
+  // listStats: {
+  //   name: {type: String},
+  //   category: {type: String},
+  //   startTime: {type: String},
+  //   distance: {type: Number},
+  //   pathDuration: {type: Number},
+  //   matchDistance: {type: Number},
+  // },
   stats: {
     bbox: {type: [Number]},
     duration: {type: Number},

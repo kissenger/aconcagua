@@ -8,8 +8,8 @@
   </div>
 
   <div *ngSwitchCase="true">
-    <input class='name input' type='text' placeholder='(Enter Route Name)' [(ngModel)]="newName" (ngModelChange)="onChange()">
-    <textarea class='desc input' placeholder='(Enter Route Description)' [(ngModel)]="newDesc" (ngModelChange)="onChange()"></textarea>
+    <input class='name input' id='name' type='text' placeholder='(Enter Path Name)' [(ngModel)]="newName" (ngModelChange)="onChange()">
+    <textarea class='desc input' id='description' placeholder='(Enter Path Description)' [(ngModel)]="newDesc" (ngModelChange)="onChange()"></textarea>
   </div>
 
 </div>

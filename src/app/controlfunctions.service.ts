@@ -18,13 +18,13 @@ export class ControlFunctions {
     ) {
   }
 
-  loadSinglePath(pathType) {
-    this.router.navigate(['load-paths', pathType, 'single']);
-  }
+  // loadSinglePath(pathType: String) {
+  //   // this.router.navigate(['paths', pathType, 'load-single']);
+  // }
 
-  loadMultiplePaths (pathType) {
-    this.router.navigate(['load-paths', pathType, 'batch']);
-  }
+  // loadMultiplePaths (pathType: String) {
+  //   this.router.navigate(['paths', pathType, 'load-batch']);
+  // }
 
   addToChallenges(pathId) {
     this.httpService.movePath(pathId, 'route', 'challenge').subscribe( (r) => {
@@ -33,19 +33,24 @@ export class ControlFunctions {
   }
 
   removeFromChallenges(pathId) {
-    this.httpService.movePath(pathId, 'challenge', 'route').subscribe( (r) => {
-      this.router.navigate(['paths', 'route']);
-    });
+    if ( window.confirm('Are you sure you want to remove challenge to routes?') ) {
+      this.httpService.movePath(pathId, 'challenge', 'route').subscribe( (r) => {
+        this.router.navigate(['paths', 'route']);
+      });
+    }
   }
 
   deletePath(pathType, pathId) {
-    this.httpService.deletePath(pathType, pathId).subscribe( () => {
+    if ( window.confirm('Are you sure you want to delete this path?') ) {
+      this.httpService.deletePath(pathType, pathId).subscribe( () => {
         this.router.navigate(['paths', pathType]);
-    });
+      });
+    }
+
   }
 
   createNewPath(pathType, pathId) {
-    this.router.navigate(['paths', pathType, pathId, true]);
+    this.router.navigate(['paths', pathType, pathId, 'create']);
   }
 
   exportPathToFile(pathType, pathId) {
@@ -78,7 +83,7 @@ export class ControlFunctions {
 
   }
 
-  discardCreatedPath(pathType) {
+  discardCreatedPath(pathType: String) {
     this.router.navigate(['paths', pathType]);
   }
 

@@ -68,13 +68,14 @@ export class InitialisationData {
     btnMenu:   { text: 'menu', isEnabled: true }, // click actions are handled in the html
     btnDelete: { text: 'delete this path', clickFunction: 'deletePath', isEnabled: true },
     btnLoad:   { text: 'import single file', clickFunction: 'loadSinglePath', isEnabled: true },
-    btnBatch:  { text: 'import Multiple files', clickFunction: 'loadMultiplePaths', isEnabled: true},
-    btnExport: { text: 'export .gpx', clickFunction: 'exportPath', isEnabled: true},
+    btnBatch:  { text: 'import multiple files', clickFunction: 'loadMultiplePaths', isEnabled: true},
+    btnExport: { text: 'export .gpx', clickFunction: 'exportPathToFile', isEnabled: true},
     btnUseAsChallenge:  { text: 'use as challenge', clickFunction: 'addToChallenges', isEnabled: true },
     btnRemoveChallenge: { text: 'remove challenge', clickFunction: 'removeFromChallenges', isEnabled: true},
     btnSaveImported:   { text: 'save', clickFunction: 'saveImportedPath', isEnabled: true },
-    btnDiscardImported:        { text: 'discard', clickFunction: 'pathDiscardImported', isEnabled: true },
-    btnCreate: { text: 'create New Route', clickFunction: 'createNewPath', isEnabled: true },
+    btnDiscardImported:        { text: 'discard', clickFunction: 'discardImportedPath', isEnabled: true },
+    btnCreateRouteOnChall: { text: 'create route on this challenge', clickFunction: 'createNewPath', isEnabled: true },
+    btnCreateRouteOnRoute: { text: 'create a new route', clickFunction: 'createNewPath', isEnabled: true },
     btnUndo:   { text: 'undo', clickFunction: 'undoLast', isEnabled: true, isChecked: false},
     btnClear:  { text: 'clear', clickFunction: 'clearPath', isEnabled: true },
     btnClose:  { text: 'close path', clickFunction: 'closePath', isEnabled: true },
@@ -83,9 +84,9 @@ export class InitialisationData {
   };
 
   private checkBoxes = {
-    cbTracks: { text: 'Tracks', id: 'cbTracks', clickFunction: 'cbShowTracks', isEnabled: false, isChecked: false },
-    cbMileMarkers: { text: 'Mile Markers', id: 'cbMileMarkers', clickFunction: 'cbShowMileMarkers', isEnabled: true, isChecked: false },
-    cbSnap: { text: 'Road Snap', id: 'cbSnap', clickFunction: 'cbSnap', isEnabled: true, isChecked: true}
+    cbTracks: { text: 'Tracks', id: 'cbTracks', clickFunction: 'showTracks', isEnabled: false, isChecked: false },
+    cbMileMarkers: { text: 'Mile Markers', id: 'cbMileMarkers', clickFunction: 'showMileMarkers', isEnabled: true, isChecked: false },
+    cbSnap: { text: 'Road Snap', id: 'cbSnap', clickFunction: 'snapToRoads', isEnabled: true, isChecked: true}
   };
 
   // object of arrays of radio buttons groups. each sub arra is treated as a group
@@ -107,8 +108,6 @@ getMapOptions(pageType) {
   }
 
   getMapLineStyles() {
-    console.log('nero');
-    console.log(this.mapLineStyles);
     return this.mapLineStyles;
   }
 

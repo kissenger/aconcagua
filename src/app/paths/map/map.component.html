@@ -6,7 +6,8 @@
 
     <!-- construct top level menu button -->
     <div class="menu-item outer-master">
-      <div class="menu-item inner"
+      <div
+        class="menu-item inner"
         id="-1"
         [ngClass]="[hovered === -1 ? 'item-hover' : 'item-unhover', isMenuSticky ? 'item-undisplay' : 'item-display']"
         (click)="visible = visible === 1 ? 0 : 1"
@@ -19,7 +20,8 @@
     <!-- construct sub menu items -->
     <div class="menu-item outer">
       <div *ngFor="let menuItem of menuItems; let i = index">
-        <div class="menu-item inner"
+        <div
+          class="menu-item inner"
           id="{{i}}"
           [ngClass]="[hovered === i ? 'item-hover' : 'item-unhover', (!visible && !isMenuSticky) ? 'item-undisplay' : 'item-display']"
           (click)="this[menuItem.clickFunction](); visible=0"
@@ -29,7 +31,52 @@
         </div>
       </div>
     </div>
+
+
+
   </div>
+
+  <div *ngIf="showPlotOptions" class="options-container">
+    <div class="options-header">Plot Options</div>
+
+    <!-- checkboxes -->
+    <!-- <div *ngIf="checkboxItems" class="checkbox-container"> -->
+        <div *ngIf="checkboxItems" class="cb-item outer">
+          <div *ngFor="let checkboxItem of checkboxItems; let i = index">
+            <div
+              class="cb-item inner">
+                {{checkboxItem.text}}
+                <input
+                  type="checkbox"
+                  id="input{{checkboxItem.text}}"
+                  class="checkbox"
+                  (click)="this[checkboxItem.clickFunction]()"
+                  [checked]="checkboxItem.isChecked">
+            </div>
+          </div>
+        </div>
+      <!-- </div> -->
+
+
+    <!-- radio buttons -->
+    <!-- <div class="radio-container"> -->
+      <div *ngIf="radioItems" class="radio-item outer">
+        <div *ngFor="let radioItem of radioItems; let i = index">
+          <div
+            class="radio-item inner">
+              {{radioItem.text}}
+              <input
+                type="radio"
+                id="input{{radioItem.text}}"
+                name="radioGroup"
+                class="radio"
+                (click)="this[radioItem.clickFunction]()">
+          </div>
+        </div>
+      </div>
+    <!-- </div> -->
+  </div>
+
 </div>
 
 <div class="form-popup" id="myForm">
@@ -60,3 +107,11 @@
   </form>
 
 </div>
+
+<!-- hidden file pick elements -->
+<div class="file-selector">
+
+    <input type="file" id="file-select-single" (change)="onFilePicked($event, 'single')" single>
+    <input type="file" id="file-select-multiple" (change)="onFilePicked($event, 'multiple')" multiple>
+
+  </div>

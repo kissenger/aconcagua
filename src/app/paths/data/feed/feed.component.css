@@ -1,0 +1,44 @@
+
+
+.container {
+  height: 60vh;
+  overflow-y: auto;
+  width: 100%;
+  padding: 0px;
+  border-top: 1px solid #DDD2AD;
+  border-left: 1px solid #DDD2AD;
+  border-right: 1px solid #DDD2AD;
+  /* border: 2px solid purple; */
+  position: relative;
+}
+
+
+.item {
+  /* margin: 10px; */
+  padding: 5px 5px 5px 10px;
+  cursor: default;
+  /* background-color: white; */
+  border-bottom: 1px solid #DDD2AD;
+  /* margin: 1px; */
+}
+
+.name {
+  color: black;
+  font-size: 16px;
+  opacity: 1;
+}
+
+.details {
+  color: black;
+  font-size: 14px;
+  opacity: 1;
+  cursor: default;
+}
+
+.been-clicked {
+  font-weight: normal;
+}
+
+.not-been-clicked {
+  font-weight: bold;
+}

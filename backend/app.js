@@ -7,6 +7,7 @@ const bodyParser = require('body-parser');
 // Local functions
 // const filefun = require('./filefun.js');
 const Match = require('./_Match.js').Match;
+const Notification = require('./_Notification.js').Notification;
 const NewMatch = require('./_Match.js').NewMatch;
 const Route = require('./_Path').Route;
 const Path = require('./_Path').Path;
@@ -20,7 +21,23 @@ const readGpx = require('./gpx.js').readGpx;
 const mongoose = require('mongoose');
 const MongoPath = require('./models/path-models');
 const MongoMatch = require('./models/match-models');
+const MongoNotice = require('./models/notification-models');
 // const MongoUsers = require('./models/user-models');
+
+// Websocket
+// https://stackoverflow.com/questions/22429744/how-to-setup-route-for-websocket-server-in-express
+const websocket = require('express-ws')(app);
+
+app.ws('/', (ws, req) => {
+    ws.on('close', () => { console.log('Connected to websocket closed') });
+})
+
+websocket.getWss().on('connection', function(ws) {
+  console.log('Connected to websocket');
+  ws.send(JSON.stringify({data: 'connected'}));
+});
+
+app.listen(80);
 
 /**
  *
@@ -34,6 +51,7 @@ app.use( (req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin","*");
   res.setHeader("Access-Control-Allow-Headers","Origin, X-Request-With, Content-Type, Accept, Authorization");
   res.setHeader("Access-Control-Allow-Methods","GET, POST, PATCH, DELETE, OPTIONS");
+
   next();
 });
 
@@ -187,9 +205,11 @@ app.get('/move-path/:id/:from/:to', auth.verifyToken, upload.single('filename'),
 
       if ( req.params.to === 'challenge' ) {
         // if route --> challenge then call match anal
-        getMatchFromImportRoute(b._id).then( (result) => {
-          res.status(201).json(result);
-        });
+        getMatchFromImportRoute(userId, b._id)
+
+        // .then( (result) => {
+        //   res.status(201).json(result);
+        // });
 
       }
       if (req.params.to === 'route' ) {
@@ -231,8 +251,11 @@ app.post('/save-path/:type/:id',  auth.verifyToken, (req, res) => {
   condition['_id'] = req.params.id;
   condition['userId'] = userId;
   filter['isSaved'] = true;
-  if ( req.body.newDesc ) { filter['description'] = req.body.newDesc; }
-  if ( req.body.newName ) { filter['name'] = req.body.newName; }
+  console.log(req.body.description);
+  if ( typeof req.body.description !== "undefined" ) { filter['description'] = req.body.description; }
+  if ( typeof req.body.name !== "undefined" ) { filter['name'] = req.body.name; }
+
+  console.log(filter);
 
   // query database, updating change data and setting isSaved to true
   pathModel
@@ -339,10 +362,13 @@ app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
   };
 
   // execute the query and return result to front-end
+  console.log('get-paths-list: list query');
   pathModel.countDocuments(condition).then( (count) => {
+    console.log('get-paths-list: got number of docs');
     pathModel
       .find(condition, filter).sort(sort).limit(LIMIT).skip(LIMIT*(req.params.offset))
       .then(documents => {
+        console.log('get-paths-list: sending data');
         res.status(201).json(new ListData(documents, count)) });
     })
   })
@@ -520,9 +546,9 @@ app.get('/flush', (req, res) => {
  *  Perform route matching on newly uploaded route
  *
  *****************************************************************/
-function getMatchFromImportRoute(routeId) {
+function getMatchFromImportRoute(userId, routeId) {
 
-  return new Promise( resolve => {
+  // return new Promise( resolve => {
 
     MongoPath.Challenges.find( {'_id': routeId} ).then( (result) => {
 
@@ -548,15 +574,27 @@ function getMatchFromImportRoute(routeId) {
         const match = new NewMatch(route, tracks);
 
         // save to db
-        MongoMatch.Match.create(match).then( () => {
-          resolve({
-            'geoBinary': match.plotBinary(),
-            'geoContour': match.plotContour(),
-          })
+        MongoMatch.Match.create(match).then( () => { });
+        notice = new Notification(
+          userId,
+          routeId,
+          'route',
+          'New Challenge',
+          'Analysis of new challenge route complete',
+          false
+        );
+        MongoNotice.Notification.create(notice);
+
+        // Notify the front end
+        // TODO filter out clients with incorrect user id
+        websocket.getWss().clients.forEach( (client) => {
+          console.log('client: ' + client);
+          client.send(JSON.stringify(notice));
         });
+
       })
     })
-  })
+  // })
 }
 
 

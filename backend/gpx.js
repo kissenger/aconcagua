@@ -40,18 +40,18 @@ function readGpx(data) {
     b = data.indexOf("\r",a);
 
     if ( lineData.indexOf("<trk>") !== -1 ) {
-      // console.log('getPathFromGpx says: found a track');
       typeOfPath = "track";
       typeTag = "trkpt";
       break;
     }
 
     if ( lineData.indexOf("<rte>") !== -1 ) {
-      typeOfPath = "route";    //preceeding '<' is important
+      typeOfPath = "route";
       typeTag = "rtept";
       break;
     }
 
+    i++;
   } while ( i < maxIters )
 
   /**

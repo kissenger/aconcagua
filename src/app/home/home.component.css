@@ -4,5 +4,6 @@ div {
 }
 
 .container {
-  margin: 0px, 0px, 0px, 150px;
+  margin: 0px, 0px, 0px, 0px;
+  color: black;
 }
