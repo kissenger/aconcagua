@@ -9,7 +9,7 @@
 .routes-map {
   margin: 0px 0px 0px 15px;
   float: left;
-  width: 67%;
+  width: 75%;
 }
 
 .data {
@@ -17,7 +17,7 @@
   background-color: white;
   border: 0px dashed orange;
   float: right;
-  width: 27%;
+  width: 20%;
   height: 45%;
   /* padding: 5px; */
 }

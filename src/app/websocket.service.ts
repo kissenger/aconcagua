@@ -31,18 +31,22 @@ export class WebsocketService {
 
       // when a message is recieved
       (msg: Object) => {
-        Reflect.ownKeys(msg).forEach(key => {
 
+        let sendNotification: Boolean = false;
+
+        Reflect.ownKeys(msg).forEach(key => {
           if ( key.toString() === 'data' ) {
             // connected message from backend
             console.log('{' + key.toString() + ': ' + msg[key] + '}');
-
           } else {
             // assume its notification data
-            this.dataService.newNotification.emit(msg);
+            sendNotification = true;
           }
-
         });
+        if ( sendNotification === true ) {
+          this.dataService.newNotification.emit(msg);
+          sendNotification = false;
+        }
       },
 
       // on error
