@@ -236,10 +236,10 @@ export class MapComponent implements OnInit, OnDestroy {
         return lineStyles[featureType];
       });
 
-      this.map.data.addListener('mouseover', (event) => {
+      this.map.data.addListener('mousedown', (event) => {
         console.log('mouseover');
         this.map.data.revertStyle();
-        this.map.data.overrideStyle(event.feature, {strokeWeight: 10});
+        this.map.data.remove(event.feature);
       });
 
       // TODO - DATA FLOWS NEED REVIEWING - THIS CAN BE IMPROVED
