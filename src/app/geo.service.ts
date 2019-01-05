@@ -12,11 +12,23 @@ import { resolve } from 'dns';
 @Injectable()
 export class GeoService {
 
-  snapToRoad(firstLngLat, lastLngLat) {
 
-    return new Promise<Array<Object>>( (res, rej) => {
+  /**
+   * Takes start and end points on line and returns MVCArray of snapped path
+   *
+   * @param firstLngLat start point of path to snap
+   * @param lastLngLat end point of path to snap
+   * @returns overview_polyline containing snapped points
+   *
+   * https://developers.google.com/maps/documentation/javascript/directions
+   */
+
+  snapToRoad(firstLngLat: google.maps.LatLng, lastLngLat: google.maps.LatLng) {
+
+    return new Promise<Array<google.maps.LatLng>>( (res, rej) => {
 
       const directionService = new google.maps.DirectionsService();
+
       directionService.route(
 
         // direction service options
@@ -40,36 +52,46 @@ export class GeoService {
     });
   }
 
+  /**
+   * returns statistics for provided path
+   * @param path array of google.maps.LatLng instances defining the full path
+   * @param elevs array of array of elevations at each point
+   * @returns object containing path statistics
+   */
 
-  pathStats(a) {
-    // a is array of [lng, lat] points from create component
+  pathStats(path: Array<google.maps.LatLng>, elevs: Array<Array<number>>) {
 
-    const d = google.maps.geometry.spherical.computeLength(a);
-    const dist = a.length === 0 ? 0 : d;
+    const d = google.maps.geometry.spherical.computeLength(path);
+    const dist = path.length === 0 ? 0 : d;
+
+    let lastElev: number;
+    let ascent = 0;
+    let descent = 0;
+    let dElev: number;
+
+    if (elevs) {
+
+      for (let i = 0; i < elevs.length; i++) {
+        for (let j = 0; j < elevs[i].length; j++) {
+          const thisElev = elevs[i][j];
+
+          if (i === 0 && j === 0) {
+          } else {
+            dElev = thisElev - lastElev;
+          }
+          ascent = dElev > 0 ? ascent + dElev : ascent;
+          descent = dElev < 0 ? descent + dElev : descent;
+          lastElev = thisElev;
+        }
+      }
+
+    }
 
     return {
-      distance: dist
+      distance: dist,
+      ascent: ascent,
+      descent: descent
     };
-
-    // if (a.length > 0) {
-    //   elevationService.getElevationForLocations({
-    //     'locations': a.getArray()
-    //   }, function(elevationResult, elevationStatus) {
-    //     if (elevationStatus.toString() === 'OK') {
-    //       const elevStats = getElevationStats(elevationResult.map(x => x.elevation));
-    //       document.getElementById('ascent').innerHTML = elevStats.totalAsc.toFixed(0) + 'm';
-    //       document.getElementById('descent').innerHTML = elevStats.totalDes.toFixed(0) + 'm';
-    //     } else {
-    //       console.log('yompsy ERROR reported from elevation service -->');
-    //       console.log(elevationStatus);
-    //       console.log(elevationResult);
-    //     }
-    //   });
-    // }  else {
-    //   document.getElementById('ascent').innerHTML = 0 + 'm';
-    //   document.getElementById('descent').innerHTML = 0 + 'm';
-    // }
-
 
   }
 }

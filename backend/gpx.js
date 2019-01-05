@@ -158,7 +158,7 @@ function writeGpx(path){
     const creator = 'Aconcagua Beta https://kissenger.github.io/aconcagua/';
     const xmlns = 'http://www.topografix.com/GPX/1/0';
 
-    const file = fs.createWriteStream('output_test.gpx');
+    const file = fs.createWriteStream('exported_path.gpx');
     const s = '   ';
     const eol = '\r\n'
     let i = 0;
@@ -199,7 +199,7 @@ function writeGpx(path){
 
     file.end;
 
-
+    resolve('thios');
 
 
   })

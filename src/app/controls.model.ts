@@ -130,7 +130,9 @@ export class Controls {
         isSticky = false;
         btnArray.push(
           menuBtns.btnCreateRouteOnChall,
-          menuBtns.btnRemoveChallenge
+          menuBtns.btnRemoveChallenge,
+          menuBtns.btnMeasureDistance,
+          menuBtns.btnFindRoutesOnChallenge
         );
       }
 

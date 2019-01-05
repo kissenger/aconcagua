@@ -500,7 +500,7 @@ app.post('/save-created-route/:type', auth.verifyToken, (req, res) => {
  *
  *
  *****************************************************************/
-app.get('/export-path/:type/:id', auth.verifyToken, (req, res) => {
+app.get('/export-path/:type/:id/', auth.verifyToken, (req, res) => {
 
   // ensure user is authorised
   const userId = req.userId;
@@ -510,19 +510,26 @@ app.get('/export-path/:type/:id', auth.verifyToken, (req, res) => {
 
   // Read file data & convert to geojson format
 
-
   MongoPath.Routes.find({userId: userId, _id: req.params.id}).then(document => {
 
     let route = new Path(document[0].geometry.coordinates, document[0].params.elev);
-    writeGpx(route).then(
-      res.status(201).json({response: 'write ok!'})
-    );
+    writeGpx(route).then( (data) => {
+      res.status(201).json({status: 'export ok'});
+    });
 
   });
 
 })
 
-
+app.get('/download', (req, res) => {
+  res.download('./exported_path.gpx', (err) => {
+    if (err) {
+      console.log('error: ' + err);
+    } else {
+      console.log('success');
+    }
+  } );
+})
 /*****************************************************************
  *
  *  Flush database of all unsaved entries

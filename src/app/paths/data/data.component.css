@@ -52,17 +52,20 @@
 .tab.right {
   background-color: #FFFFFF;
   float: right;
+  cursor: pointer;
 }
 
 .tab.mid {
   background-color: #FFFFFF;
   margin: 0px 0px 0px 6px;
+  cursor: pointer;
   /* float: left; */
 }
 
 .tab.left {
   background-color: #E9E2CB;
   float: left;
+  cursor: pointer;
 }
 
 .notices {

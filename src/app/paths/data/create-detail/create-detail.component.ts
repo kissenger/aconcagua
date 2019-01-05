@@ -20,6 +20,8 @@ export class CreateDetailComponent implements OnInit, OnDestroy {
 
   public myService;
   public distance = 0;
+  public ascent = 0;
+  public descent = 0;
 
   constructor(
     private dataService: DataService,
@@ -31,6 +33,8 @@ export class CreateDetailComponent implements OnInit, OnDestroy {
     this.myService = this.dataService.fromCreateToDetail.subscribe( (dataIn) => {
 
       this.distance = dataIn.distance;
+      this.ascent = dataIn.ascent;
+      this.descent = dataIn.descent;
       // console.log(this.distance);
 
     });

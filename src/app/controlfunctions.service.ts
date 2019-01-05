@@ -53,11 +53,9 @@ export class ControlFunctions {
     this.router.navigate(['paths', pathType, pathId, 'create']);
   }
 
-  exportPathToFile(pathType, pathId) {
-    this.httpService.exportPath(pathType, pathId).subscribe( (r) => {
-      alert('Operation complete');
-    });
-  }
+  // exportPathToFile(pathType: String, pathId: String) {
+
+  // }
 
   discardImportedPath(pathType) {
     this.router.navigate(['paths', pathType]);

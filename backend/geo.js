@@ -49,15 +49,13 @@ function degs2rads(degs) {
 
 
 /**
-* ---------------------------------------------------
 * returns distance in meters between a line and a point
-* ---------------------------------------------------
-* latLng1 is lat/lng of point 1 (line start) in decimal degrees
-* latLng2 is lat/lng of point 2 (line end) in decimal degrees
-* latLng3 is lat/lng of point 3 (point) in decimal degrees
-*---------------------------------------------------
+*
+* @param {Point} p1 lng/lat of line start in decimal degrees as instance of Point class
+* @param {Point} p2 lng/lat of line end in decimal degrees as instance of Point class
+* @param {Point} p3 lng/lat of mid-point in decimal degrees as instance of Point class
+*
 * https://www.movable-type.co.uk/scripts/latlong.html
-*---------------------------------------------------
 */
 
 function p2l(p1, p2, p3) {

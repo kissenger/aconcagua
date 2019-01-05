@@ -53,8 +53,11 @@ export class InitialisationData {
     styles: this.mapStyle,
     fullscreenControl: false,
     streetViewControl: false,
-    mapTypeControl: false,
-    mapTypeControlOptions: { mapTypeIds: ['terrain'] }
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      style: google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+      position: google.maps.ControlPosition.TOP_RIGHT,
+      mapTypeIds: ['terrain', 'satellite'] }
   };
 
   private mapLineStyles = {
@@ -76,11 +79,13 @@ export class InitialisationData {
     btnDiscardImported:        { text: 'discard', clickFunction: 'discardImportedPath', isEnabled: true },
     btnCreateRouteOnChall: { text: 'create route on this challenge', clickFunction: 'createNewPath', isEnabled: true },
     btnCreateRouteOnRoute: { text: 'create a new route', clickFunction: 'createNewPath', isEnabled: true },
-    btnUndo:   { text: 'undo', clickFunction: 'undoLast', isEnabled: true, isChecked: false},
+    btnFindRoutesOnChallenge: {text: 'find a route on this challenge', clickFunction: 'findPathOnChallenge', isEnabled: true},
+    btnUndo:   { text: 'undo', clickFunction: 'undoLast', isEnabled: true},
     btnClear:  { text: 'clear', clickFunction: 'clearPath', isEnabled: true },
     btnClose:  { text: 'close path', clickFunction: 'closePath', isEnabled: true },
     btnSaveCreated:     { text: 'save route', clickFunction: 'saveCreatedPath', isEnabled: true },
     btnDiscardCreated:   { text: 'discard', clickFunction: 'discardCreatedPath', isEnabled: true },
+    btnMeasureDistance: {text: 'measure distance', clickFunction: 'measureDistance', isEnabled: true}
   };
 
   private checkBoxes = {

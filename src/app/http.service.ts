@@ -17,6 +17,7 @@ export class HttpService {
   private saveCreatedRouteUrl = 'http://localhost:3000/save-created-route/';
   private exportPathUrl = 'http://localhost:3000/export-path/';
   private movePathUrl = 'http://localhost:3000/move-path/';
+  private getDownloadUrl = 'http://localhost:3000/download/';
 
   constructor( private http: HttpClient ) {}
 
@@ -24,8 +25,13 @@ export class HttpService {
     return this.http.get<any>(this.movePathUrl + id + '/' + from + '/' + to);
   }
 
+  getDownload() {
+    console.log('getDOwnload');
+    return this.http.get<any>(this.getDownloadUrl);
+  }
 
-  exportPath(type: String, id: String) {
+  exportPath(type, id) {
+    console.log(this.exportPathUrl);
     return this.http.get<any>(this.exportPathUrl + type + '/' + id);
   }
 
