@@ -114,7 +114,7 @@ export class Controls {
           menuBtns.btnDelete,
           menuBtns.btnCreateRouteOnRoute,
           menuBtns.btnExport,
-          menuBtns.btnUseAsChallenge
+          // menuBtns.btnUseAsChallenge
         );
 
       } else if ( pathType === 'track') {
@@ -130,9 +130,11 @@ export class Controls {
         isSticky = false;
         btnArray.push(
           menuBtns.btnCreateRouteOnChall,
-          menuBtns.btnRemoveChallenge,
+          menuBtns.btnDeleteChallenge,
           menuBtns.btnMeasureDistance,
-          menuBtns.btnFindRoutesOnChallenge
+          menuBtns.btnFindRoutesOnChallenge,
+          menuBtns.btnNewPathCloudChallenge,
+          menuBtns.btnNewPathsChallenge
         );
       }
 

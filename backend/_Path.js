@@ -1,43 +1,59 @@
-const p2p = require('./geo.js').p2p;
-const p2l = require('./geo.js').p2l;
-const Point = require('./_Point.js').Point;
+const p2p = require('./geoLib.js').p2p;
+const p2l = require('./geoLib.js').p2l;
+const Point = require('./geoLib.js').Point;
+const boundingBox = require('./geoLib').boundingBox;
+const pathDistance = require('./geoLib').pathDistance;
 
-
-
+/**
+ * Path Class
+ * Use where data specific to a route/track is not of interest (eg simplification)
+ * Otherwise use Route and Track classes, which extend the Path class
+ */
 class Path  {
 
-  constructor(lngLat, elev, time, heartRate, cadence) {
+  constructor(lngLat, elev) {
 
-
-    this.lngLat = lngLat;
-
-    if (time) {
-      if (typeof time[0] === 'string') {
-        // have recieved array of timestamps - convert to increments in seconds
-        this.startTime = time[0];
-        this.time = time.map( (t, i, a) => {
-          return i===0 ? 0 : (new Date(t) / 1000) - (new Date(a[i-1]) / 1000)
-        });
-      } else {
-        // have recieved array of increments - use as-is
-        this.time = time;
-      }
-    }
-
+    this.lngLat = lngLat.map( (x) => [parseFloat(x[0].toFixed(6)), parseFloat(x[1].toFixed(6))]);
+    this.bbox = boundingBox(this.lngLat);
+    this.distance = pathDistance(this.lngLat);
     this.pathSize = this.lngLat.length - 1;
-
+    this.category = this.category();
     if (elev) this.elev = elev;
-    if (heartRate) this.heartRate = heartRate;
-    if (cadence) this.cadence = cadence;
-    // this.category = category();
-
 
   }
 
+
+  // /**
+  //  * Calculates distance in metres covered by path
+  //  * @param {*} lngLat array containing [lng, lat] coordinates
+  //  */
+  // distance(lngLat) {
+  //   let distance = 0;
+  //   let lastPoint, thisPoint;
+  //   for (let i = 0; i < lngLat.length; i++) {
+  //     thisPoint = this.getPoint(i);
+  //     if (i > 0) distance += p2p(thisPoint, lastPoint);
+  //     lastPoint = thisPoint;
+  //   }
+  //   return distance;
+  // }
+
+
+  /**
+   * Allows insertion of a property onto the class object from an external user
+   * @param {object} obj is the key-value pair to insert {object: key}
+   */
   injectKeyValuePair(obj) {
     this[Object.keys(obj)[0]] = Object.values(obj)[0];
   }
 
+
+  /**
+   * Returns object in format for insertion into MongoDB
+   * @param {string} userId
+   * @param {boolean} isSaved
+   * // TODO change this to property of the class, not a method. Neater but need byRef?
+   */
   mongoFormat(userId, isSaved) {
     // return object in format required to save to mongo
 
@@ -48,7 +64,6 @@ class Path  {
     if (this.heartRate) params.heartRate = this.heartRate;
     if (this.cadence) params.cadence = this.cadence;
 
-    const category = this.category();
     const name = typeof this.name === 'undefined' ? "" : this.name;
     const stats = this.analysePath();
 
@@ -57,7 +72,7 @@ class Path  {
       isSaved: isSaved,
       pathType: this.pathType,
       startTime: this.startTime,
-      category: category,
+      category: this.category,
       name: name,
       description: this.description,
       geometry: {
@@ -66,18 +81,15 @@ class Path  {
       },
       params: params,
       stats: stats,
-      // listStats: {
-      //   name: name,
-      //   category: category,
-      //   startTime: this.startTime,
-      //   pathDistance: stats.distance,
-      //   duration: stats.duration,
-      // },
     }
   }
 
-  point(index) {
-    // return data for a single point
+
+  /**
+   * Returns point class for node of given index
+   * @param {number} index
+   */
+  getPoint(index) {
     let thisPoint = [];
     if ( this.lngLat ) thisPoint.push(this.lngLat[index]);
     if ( this.elev ) thisPoint.push(this.elev[index]);
@@ -88,7 +100,10 @@ class Path  {
   }
 
 
-
+  /**
+   * Categorises the path based on shape (circular, out-and-back, etc)
+   *
+   */
   category() {
 
     const MATCH_DISTANCE = 25;   // in m, if points are this close then consider as coincident
@@ -100,7 +115,7 @@ class Path  {
     let nm = 0;
     for ( let i = 0; i < this.pathSize - BUFFER; i++ ) {
       for ( let j = i + BUFFER; j < this.pathSize; j++ ) {
-        if ( p2p(this.point(i), this.point(j)) < MATCH_DISTANCE ) {
+        if ( p2p(this.getPoint(i), this.getPoint(j)) < MATCH_DISTANCE ) {
           nm++;
           break;
         }
@@ -109,9 +124,7 @@ class Path  {
 
     // caculate proportion of points that are matched ( x2 becasue only a max 1/2 of points can be matched)
     const pcShared = nm / this.pathSize * 100 * 2;
-
-    // determine path category
-    if ( p2p(this.point(0), this.point(this.pathSize)) < MATCH_DISTANCE * 10 ) {
+    if ( p2p(this.getPoint(0), this.getPoint(this.pathSize)) < MATCH_DISTANCE * 10 ) {
       // path ends where it started, within tolerance
 
       if ( pcShared > PC_THRESH_UPP ) return 'Out and back'
@@ -128,8 +141,10 @@ class Path  {
     }
   }
 
+  /**
+   * Create path statistics and parameters
+   */
   analysePath() {
-
 
     const KM_TO_MILE = 0.6213711922;
     const ALPHA = 0.3;             //low pass filter constant, to higher the number the quicker the response
@@ -138,7 +153,6 @@ class Path  {
     const SPEED_THRESHOLD = 1.4;   // km/h
 
     let maxDist = 0;
-    let bbox = [ 180, 90, -180, -90 ]; //minLng, minLat, maxLng, maxLat
     let p2pMax = 0;
 
     // increments from last point
@@ -181,13 +195,13 @@ class Path  {
      * Pre-process
      *
      */
-    const isTime = typeof this.point(0).time !== 'undefined' ? true : false;
-    const isElev = typeof this.point(0).elev !== 'undefined' ? true : false;
+    const isTime = typeof this.getPoint(0).time !== 'undefined' ? true : false;
+    const isElev = typeof this.getPoint(0).elev !== 'undefined' ? true : false;
 
     let index = 0;
     do  {
 
-      const thisPoint = this.point(index);
+      const thisPoint = this.getPoint(index);
 
       // skipping the first point, compare this point to the previous one
       if (index !== 0) {
@@ -206,6 +220,7 @@ class Path  {
          * Compare speed between previous point and this, against threshold.
          * Eliminate data points below threshold
          * Output: new array with indexes of saved points
+         * NOT RUN FOR ROUTE AS LACKING ANY TIME INFORMATION
          */
         if ( isTime ) {
 
@@ -219,37 +234,36 @@ class Path  {
 
         }
 
-         /**
-         * Mile and KM splits
-         * Create new arrays containing point number at milestone, and pace for last segment
-         */
-
-          if ( distance / (1000 * (kmSplits.length + 1)) >= 1 || index === this.pathSize) {
-            // first point past finished km
-            if ( isTime ) {
-              var dt = (duration - lastKmStartTime) / 60;     //time in mins
-              var dd = (distance - lastKmStartDist) / 1000;
-            }
-            kmSplits.push([index, isTime ? dt/dd : 0]);
-            lastKmStartTime = duration;
-            lastKmStartDist = distance;
+        /**
+        * Mile and KM splits
+        * Create new arrays containing point number at milestone, and pace for last segment
+        * TODO: take this into distance function and only find splits here?  avoids duplication
+        */
+        if ( distance / (1000 * (kmSplits.length + 1)) >= 1 || index === this.pathSize) {
+          // first point past finished km
+          if ( isTime ) {
+            var dt = (duration - lastKmStartTime) / 60;     //time in mins
+            var dd = (distance - lastKmStartDist) / 1000;
           }
-          if ( distance * KM_TO_MILE / (1000 * (mileSplits.length + 1)) >= 1 || index === this.pathSize) {
-            if ( isTime ) {
-              var dt = (duration - lastMileStartTime) / 60;
-              var dd = (distance - lastMileStartDist) / 1000 * KM_TO_MILE;
-            }
-            mileSplits.push([index, isTime ? dt/dd : 0]);
-            lastMileStartTime = duration;
-            lastMileStartDist = distance;
+          kmSplits.push([index, isTime ? dt/dd : 0]);
+          lastKmStartTime = duration;
+          lastKmStartDist = distance;
+        }
+        if ( distance * KM_TO_MILE / (1000 * (mileSplits.length + 1)) >= 1 || index === this.pathSize) {
+          if ( isTime ) {
+            var dt = (duration - lastMileStartTime) / 60;
+            var dd = (distance - lastMileStartDist) / 1000 * KM_TO_MILE;
           }
+          mileSplits.push([index, isTime ? dt/dd : 0]);
+          lastMileStartTime = duration;
+          lastMileStartDist = distance;
+        }
 
-
-         /**
-         * Elevation tracking and analyse gradient and hills
-         * Count cumulative elevation gain/drop
-         * Gradient and slope type
-         */
+        /**
+        * Elevation tracking and analyse gradient and hills
+        * Count cumulative elevation gain/drop
+        * Gradient and slope type
+        */
         if ( isElev ) {
           // elevation data exists on this point
 
@@ -323,22 +337,10 @@ class Path  {
 
       } else {
         // index === 0
-
-        if ( isElev) thisFiltElev = this.point(index).elev;
-
-
-
+        if ( isElev) thisFiltElev = this.getPoint(index).elev;
       }
 
-     /**
-     * Bounding box
-     */
-      bbox[0] = thisPoint.lng < bbox[0] ? thisPoint.lng : bbox[0];
-      bbox[1] = thisPoint.lat < bbox[1] ? thisPoint.lat : bbox[1];
-      bbox[2] = thisPoint.lng > bbox[2] ? thisPoint.lng : bbox[2];
-      bbox[3] = thisPoint.lat > bbox[3] ? thisPoint.lat : bbox[3];
-
-     /**
+      /**
      * Keep track of previous points for next loop
      */
       lastPoint = thisPoint;
@@ -349,7 +351,7 @@ class Path  {
     return{
 
       duration: isTime ? duration: 0,
-      bbox: bbox,
+      bbox: this.bbox,
       movingTime: isTime ? movingTime : 0,
       movingDist: isTime ? movingDist : 0,
       distance: distance,
@@ -364,18 +366,30 @@ class Path  {
         max: p2pMax,
         ave: distance / this.pathSize
       }
-
     }
-
   }
 
+//  /**
+//   * Returns bounding box for current path or path segment
+//   * @param {*} lngLatArray
+//   */
+//   getBoundingBox(lngLatArray) {
+//     const bbox = [ 180, 90, -180, -90 ];
+//     lngLatArray.forEach( (p) => {
+//       bbox[0] = p[0] < bbox[0] ? p[0] : bbox[0];
+//       bbox[1] = p[1] < bbox[1] ? p[1] : bbox[1];
+//       bbox[2] = p[0] > bbox[2] ? p[0] : bbox[2];
+//       bbox[3] = p[1] > bbox[3] ? p[1] : bbox[3];
+//     });
+//     return bbox;
+//   }
 
-/**
- * function simplifyPath
- * simplify path using perpendicular distance method
- * http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.95.5882&rep=rep1&type=pdf
- */
 
+ /**
+  * function simplifyPath
+  * simplify path using perpendicular distance method
+  * http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.95.5882&rep=rep1&type=pdf
+  */
   simplify() {
 
     const TOLERANCE = 10;     // tolerance value in metres; the higher the value to greater the simplification
@@ -390,23 +404,18 @@ class Path  {
     while ( flag === true ) {
       i = 0;
       flag = false;   // if remains true then simplification is complete; loop will break
-
       while ( i < ( j.length - 2 ) ) {
-
-        // find perpendicular distance from line p(i)-p(i+2) to point p(i+1)
-        const pd = p2l( this.point(j[i]), this.point(j[i+2]), this.point(j[i+1]) );
+        const pd = p2l( this.getPoint(j[i]), this.getPoint(j[i+2]), this.getPoint(j[i+1]) );
         if ( Math.abs(pd) < TOLERANCE ) {
           j.splice(i+1, 1);
           flag = true;
         }
         i++;
-
       }
     }
 
     // strip out points from class using whats left of j
     this.lngLat = j.map( x => this.lngLat[x] );
-    console.log(this.time);
     if ( typeof this.elev !== 'undefined') {
       if ( this.elev.length !== 0 ) this.elev = j.map( x => this.elev[x] );
     }
@@ -416,40 +425,63 @@ class Path  {
 
     // update path length
     this.pathSize = this.lngLat.length - 1;
-
-    //compression ratio for info only
     console.log( 'Simplified path to: ' + ((j.length/origLength)*100.0).toFixed(1) + '%');
 
   }
 
-}
+} // end of Path Class
 
 
+/**
+ * Track Class
+ * Invokes Path class ensuring that any track params are captured (time, HR, cadence etc)
+ */
 class Track extends Path {
   constructor(name, description, lngLat, elev, time, heartRate, cadence){
 
-    super(lngLat, elev, time, heartRate, cadence);
+    super(lngLat, elev);
 
     this.pathType = 'track';
     this.name = name;
     this.description = description;
 
+    if (heartRate) this.heartRate = heartRate;
+    if (cadence) this.cadence = cadence;
+    if (time) {
+      if (typeof time[0] === 'string') {
+
+        // have recieved array of timestamps - convert to increments in seconds
+        this.startTime = time[0];
+        this.time = time.map( (t, i, a) => {
+          return i===0 ? 0 : (new Date(t) / 1000) - (new Date(a[i-1]) / 1000)
+        });
+
+      } else {
+
+        // have recieved array of increments - use as-is
+        this.time = time;
+
+      }
+    }
   }
 }
 
+
+/**
+ * Route class
+ * Ignores any parameters except name, desc, coord and elev
+ * Calls simplify on all paths in order to minimise O of matching algorithm
+ */
 class Route extends Path {
-  constructor(name, description, lngLat, elev, time, heartRate, cadence){
-
-    super(lngLat, elev, time, heartRate, cadence);
-
+  constructor(name, description, lngLat, elev){
+    super(lngLat, elev);
     this.pathType = 'route';
     this.name = name;
     this.description = description;
-
     this.simplify();
-
   }
 }
+
 
 
 module.exports = {

@@ -56,30 +56,19 @@ const pathSchema = mongoose.Schema({
     ]},
     kmSplits: {type: [[Number]]},
     mileSplits: {type: [[Number]]}
-  },
-  matchStats: {
-    distance: {type: Number},          // total distance matched to route
-    time: {type: Number},
-    ascent: {type: Number},
-    nVisits: {type: Number},
-    longestVisit: {
-      trackId: {type: Number},
-      matchDistance: {type: Number}
-    }
   }
+
 })
 
 pathSchema.index({ userId: 1, creationDate: 1});
 pathSchema.index({ userId: 1, startTime: 1});
 
-
-const Challenges = mongoose.model('challenges', pathSchema);
+//const Challenges = mongoose.model('challenges', pathSchema);
 const Tracks = mongoose.model('tracks', pathSchema);
 const Routes = mongoose.model('routes', pathSchema);
 
 
 module.exports = {
   Tracks: Tracks,
-  Routes: Routes,
-  Challenges: Challenges
+  Routes: Routes
 };

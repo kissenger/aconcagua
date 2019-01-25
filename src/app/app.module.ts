@@ -21,7 +21,6 @@ import { HomeComponent } from './home/home.component';
 import { FooterComponent } from './footer/footer.component';
 import { HeaderComponent } from './header/header.component';
 import { PathsComponent } from './paths/paths.component';
-import { CreateComponent } from './paths/create/create.component';
 import { MapComponent } from './paths/map/map.component';
 import { DataComponent } from './paths/data/data.component';
 import { ListComponent } from './paths/data/list/list.component';
@@ -49,7 +48,6 @@ import { ControlFunctions } from './controlfunctions.service';
     CreateDetailComponent,
     SummaryComponent,
     ListComponent,
-    CreateComponent,
     LoginComponent,
     RegisterComponent,
     FeedComponent

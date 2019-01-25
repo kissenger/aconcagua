@@ -16,12 +16,11 @@ function readGpx(data) {
   //   newlineChar = '\n'
   // } elseif
 
+  const MAX_LOOPS = 1000000;
   var a = 0;                          // start of interesting feature
   var b = data.indexOf("\r",a);     // end of interesting feature
-  var i = 0;                          // counter
   var typeOfPath = '';
   var nameOfPath = '';                 // "route" or "path"
-  const maxIters = 100000;             // will only process this number of points
   var latValue, lngValue, eleValue, timeValue;
   let lngLat = [];
   let time = [];
@@ -31,9 +30,9 @@ function readGpx(data) {
 
 
   /**
-   * Loop until we find track or route start
+   * Loop through each line until we find track or route start
    */
-  do {
+  for (let i = 0; i < MAX_LOOPS; i++) {
 
     lineData = data.slice(a,b)
     a = b + 2;
@@ -51,12 +50,9 @@ function readGpx(data) {
       break;
     }
 
-    i++;
-  } while ( i < maxIters )
+  }
 
-  /**
-   *  Try to find a name
-   */
+  //  Try to find a name
   lineData = data.slice(a,b)
   a = lineData.indexOf("<name>");
   b = lineData.indexOf("</name>");
@@ -65,13 +61,13 @@ function readGpx(data) {
   }
 
   /**
-   *  If this is a track file....
+   *  Loop through each point in this segment
    */
 
   ptEnd = b;
   const fs = require('fs');
   const file = fs.createWriteStream("C:/__FILES/PROJECT/__Master Data/check.txt");
-  do {
+  for (let i = 0; i < MAX_LOOPS; i++) {
 
     // get the start and end of the current track point, break from loop if not found
     ptStart = data.indexOf('<' + typeTag,ptEnd);  // find the next tag opener
@@ -128,8 +124,7 @@ function readGpx(data) {
 
     file.write(lngValue + ',' + latValue + ',' + eleValue + ',' + timeValue + '\n');
 
-    i++;
-  } while ( i < maxIters )
+  }
 
   // create paths
   // note that time and elev are only pushed if at least one point was found to contain this data
@@ -208,8 +203,10 @@ function writeGpx(path){
 
 
 
-
-
+/**
+ * export data to CSV
+ * @param {Path} path
+ */
 function exportCsv(path) {
 
   const fs = require('fs');
@@ -221,4 +218,118 @@ function exportCsv(path) {
 
 }
 
-module.exports = { readGpx, writeGpx };
+/**
+ * parse returned data from OSM query
+ * @param {OSM data} data
+ * @param {Array} bbox
+ */
+function parseOSM(data, bbox) {
+
+  const MAX_LOOPS = 1000000;
+  let beg = 0;
+  let end;
+  let points = [];
+  const chunks = [];
+  const lengthOfData = data.length;
+
+  /**
+   * Loop through each line of data sequentially
+   */
+
+  for (let i = 0; i < MAX_LOOPS; i++) {
+
+    beg = end+2;                              // move start point to after line break
+    end = data.indexOf("\n",beg);       // find next end of line
+    var lineData = data.slice(beg, end);
+
+    // detect end of file
+    if ( end > lengthOfData - 5 ) {
+      break;
+    }
+
+    // gather list of nodes
+    if (lineData.indexOf("node") !== -1) {
+
+      // id
+      a = lineData.indexOf("id=");
+      b = lineData.indexOf(" ", a);
+
+      if ( a !== -1 && b !== -1 ) {
+        id = parseFloat(lineData.slice(a, b).match(/[-0123456789.]/g).join(""));
+      }
+
+      // lat and long
+      a = lineData.indexOf("lat=");
+      b = lineData.indexOf("lon=");
+
+      if ( a !== -1 && b !== -1 ) {
+        if ( b > a ) {
+          latValue = parseFloat(lineData.slice(a, b).match(/[-0123456789.]/g).join(""));
+          lngValue = parseFloat(lineData.slice(b, end).match(/[-0123456789.]/g).join(""));
+        } else {
+          lngValue = parseFloat(lineData.slice(b, a).match(/[-0123456789.]/g).join(""));
+          latValue = parseFloat(lineData.slice(a, end).match(/[-0123456789.]/g).join(""));
+        }
+        if (lngValue > bbox[0] && lngValue < bbox[2] && latValue > bbox[1] && latValue < bbox[3]) {
+          points.push({id: id, lngLat: [lngValue, latValue]});
+        }
+      }
+
+
+    }
+
+
+    // get nodes associated with roads
+    if (lineData.indexOf("<way") !== -1) {
+
+      const tempids = [];
+      for (let j=0; j < 1000; j++) {
+
+        if (lineData.indexOf("</way") !== -1) {
+          break;
+        }
+
+        if (lineData.indexOf("<nd") !== -1) {
+          ref = parseInt(lineData.match(/[-0123456789.]/g).join(""));
+          tempids.push(ref);
+        }
+
+        // only catch data if its tagged as a highway
+        if ( (lineData.indexOf("highway") !== -1 && lineData.indexOf("footway") !== -1 ) ||
+            lineData.indexOf('bridleway') !== -1 ||
+            lineData.indexOf('towpath') !== -1) {
+          chunks.push(tempids);
+        }
+
+        beg = end+2;                              // move start point to after line break
+        end = data.indexOf("\n",beg);             // find next end of line
+        lineData = data.slice(beg, end);
+
+      }
+
+    }
+  }
+
+  returnArray = [];
+  chunks.forEach( (chunk) => {
+    const temp = [];
+    chunk.forEach( (id) => {
+      if (chunk.length > 1) {
+        for (let i = 0; i < points.length; i++) {
+          if (id === points[i].id) {
+            temp.push(points[i].lngLat)
+          }
+        }
+      }
+    })
+    returnArray.push(temp);
+  })
+
+
+  return returnArray;
+
+}
+
+
+
+module.exports = { readGpx, writeGpx, parseOSM };

@@ -66,7 +66,6 @@ export class DataComponent implements OnInit, OnDestroy {
 
       this.tabHighlightColour = '#E9E2CB';
 
-
     });
 
 

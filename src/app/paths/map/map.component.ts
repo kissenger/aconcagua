@@ -29,45 +29,49 @@ import { map } from 'rxjs/operators';
 export class MapComponent implements OnInit, OnDestroy {
 
   // url parameter subscription derived variables
-  public paramSubs: any;
-  public pathType: String;
-  public pathId: String;
-  public pageType: String;
+  private paramSubs: any;
+  private pathType: String;
+  private pathId: String;
+  private pageType: String;
 
   // arrays containing required controls for this page
-  public menuItems: any;
-  public isMenuSticky: Boolean;
-  public checkBoxItems: any;
-  public radioItems: any;
-  public checkboxItems: any;
-  public showPlotOptions = true;
+  private menuItems: any;
+  private isMenuSticky: Boolean;
+  private checkBoxItems: any;
+  private radioItems: any;
+  private checkboxItems: any;
+  private showPlotOptions = true;
 
   // google map instances
-  public map: google.maps.Map;
-  public polyLine: google.maps.Polyline;
-  public elevator: google.maps.ElevationService;
+  private map: google.maps.Map;
+  private polyLine: google.maps.Polyline;
+  private elevator: google.maps.ElevationService;
+
+  // challenges
+  private challengeType: string;
 
 
   // used in save path form popup
-  public pathName: String;
-  public description: String;
-  public isBatch = false;
+  private pathName: String;
+  private description: String;
+  private isBatch = false;
 
   // recieved geoJson files from the backend
-  public path: any;               // route/track data
-  public binary;                  // binary plot data
-  public tracks;                  // all matched tracks
-  public contour;                 // contour plot data
+  private path: any;               // route/track data
+  private binary;                  // binary plot data
+  private tracks;                  // all matched tracks
+  private contour;                 // contour plot data
 
   // used in route create mode
-  public markers = [];
-  public elevArray = [];
+  private markers = [];
+  private elevArray = [];
+  private activePathSegmentInstance: any;
 
   // other class variables used for flow control
-  public subsActive: Boolean;
-  public timer: NodeJS.Timer;
+  private subsActive: Boolean;
+  private timer: NodeJS.Timer;
 
-  public feedService: any;
+  private feedService: any;
 
   constructor(
     private httpService: HttpService,
@@ -96,67 +100,57 @@ export class MapComponent implements OnInit, OnDestroy {
 
       // initialise
       document.documentElement.style.cursor = 'wait';
-      this.pathType = params.type;
       this.pathId = params.id;
+      this.pathType = params.pathType;
+      this.pageType = getPageType(this.pathId, params.pageType);
 
-      // Determine page type
-      if ( params.id === '-1' ) {
-        if ( typeof params.pageType === 'undefined' ) { this.pageType = 'review'; }
-
-      } else if (params.id === 'load-single') {
-        this.pageType = 'load-single';
-
-      } else if ( params.id === 'load-batch' ) {
-        this.pageType = 'load-batch';
-
-      } else {
-
-        if ( params.pageType === 'create' ) {
-          this.pageType = 'create';
-        } else {
-          this.pageType = 'normal';
-        }
-
-      }
+      console.log(this.pathId);
+      console.log(this.pathType);
+      console.log(this.pageType);
 
       // get definition of controls for this page
-      const menu =  this.controls.getMenuButtons(this.pageType, this.pathType);
-      this.menuItems = menu.btnArray;
-      this.isMenuSticky = menu.isSticky;
+      this.isMenuSticky = this.controls.getMenuButtons(this.pageType, this.pathType).isSticky;
+      this.menuItems = this.controls.getMenuButtons(this.pageType, this.pathType).btnArray;
       this.radioItems = this.controls.getRadioButtons(this.pageType, this.pathType)[0];
       this.checkboxItems = this.controls.getCheckBoxes(this.pageType, this.pathType);
       if ( typeof this.radioItems === 'undefined' && typeof this.checkboxItems[0] === 'undefined' ) {
         this.showPlotOptions = false;
+      } else {
+        this.showPlotOptions = true;
       }
 
-      // now do stuff depending on the types of path and path
-      if ( typeof this.pathId !== 'undefined') {
+      // console.log(this.radioItems, this.checkboxItems);
 
-        if ( this.pageType === 'load-single' ||  this.pageType === 'load-batch') {
-          document.getElementById('file-select').style.display = 'block';
+      // now we know page type, get data and call loadMap()
+      if ( this.pageType === 'review') {
+        this.path = this.dataService.getStoredNewPath();
+        this.pathId = this.path.properties.pathId;
+        this.loadMap();
 
-        } else if ( this.pageType === 'normal' || this.pageType === 'create') {
-          // this is NOT review page
+      } else if ( this.pageType === 'load-single' ||  this.pageType === 'load-batch') {
+        document.getElementById('file-select').style.display = 'block';
 
-          this.httpService.getPathById(this.pathType, this.pathId, false).subscribe( (result) => {
+      } else if ( this.pageType === 'normal' || this.pageType === 'create') {
 
+        if (this.pathId) {   // required to prevent trying to recall a non-existant path when no id in url
+          this.httpService.getPathById(this.pathType, this.pathId).subscribe( (result) => {
+            console.log(result);
             this.path = result.geoJson;
-            if ( this.pathType === 'challenge' ) {
-              // only load matched data if this is a challenge
+            console.log(this.path);
 
+            if ( this.pathType === 'challenge' ) {
+              console.log(result);
               this.binary = result.geoBinary;
               this.contour = result.geoContour;
-
-
               this.feedService = this.dataService.newNotification.subscribe( (data) => {
-
+                // notification
               });
 
               // **NEED TO DETECT IF THIS IS A NEWLY UPLOADED CHALLENGE, IF SO DONT LOAD TRACKS (YET)
               this.httpService.getMatchedTracks(this.pathId).subscribe( (res) => {
 
                 this.tracks = res['geoTracks'];
-                console.log(this.tracks);
+                // console.log(this.tracks);
 
                 // use timer to repeatedly attempt to trun checkbox active, until succesful
                 // this.subsActive = false;
@@ -169,28 +163,32 @@ export class MapComponent implements OnInit, OnDestroy {
             } // if challenge page
 
             this.loadMap();
-
           }); // httpService subscription
-
-        } else if ( this.pageType === 'review' ) {
-        // this is review page
-
-          this.path = this.dataService.getStoredNewPath();
-          this.pathId = this.path.features[0].properties.pathId;
-          this.loadMap();
-
-        } // if ( this.pageType ...
-
+        }
+        // this.loadMap();
         document.documentElement.style.cursor = 'default';
-
-      } // if ( typeof this.pathId !== 'undefined') {
+      }
 
     }); // url params subscription
+
+    /**
+     * Determines the type of page to display based on url parameters
+     * @param id path id as string
+     * @param page page type if provided as string
+     */
+    function getPageType(id: String, page: String) {
+      if ( id === '-1' && typeof page === 'undefined' ) { return 'review'; }
+      if ( id === 'load-single') { return 'load-single'; }
+      if ( id === 'load-batch' ) { return 'load-batch'; }
+      if ( page === 'create' ) { return 'create'; }
+      return 'normal';
+    }
 
   } // ngOnInit
 
   loadMap() {
 
+    // console.log(this.pageType);
     console.log(this.path);
     console.log(this.binary);
     console.log(this.contour);
@@ -207,12 +205,9 @@ export class MapComponent implements OnInit, OnDestroy {
       });
 
     } else {
-    // path id is known
 
-      this.path.features[0]['id'] = 'route-';
-
-      this.map.data.addGeoJson(this.path.features[0]);
-
+      this.path.features.forEach((x, i) => x['id'] = 'route-' + i);
+      this.map.data.addGeoJson(this.path);
       this.map.fitBounds({
         north: this.path.bbox[3],
         south: this.path.bbox[1],
@@ -221,6 +216,7 @@ export class MapComponent implements OnInit, OnDestroy {
       });
 
       // set style of plotted paths
+      // think about doing this in a more readble manner, even if it take more lines.
       const lineStyles = this.initData.getMapLineStyles();
       this.map.data.setStyle( (feature) => {
         const featureId = String(feature.getId());
@@ -236,11 +232,7 @@ export class MapComponent implements OnInit, OnDestroy {
         return lineStyles[featureType];
       });
 
-      this.map.data.addListener('mousedown', (event) => {
-        console.log('mouseover');
-        this.map.data.revertStyle();
-        this.map.data.remove(event.feature);
-      });
+
 
       // TODO - DATA FLOWS NEED REVIEWING - THIS CAN BE IMPROVED
       const emitData = {
@@ -418,37 +410,308 @@ export class MapComponent implements OnInit, OnDestroy {
 
   loadSinglePath()       { document.getElementById('file-select-single').click(); }
   loadMultiplePaths()    { document.getElementById('file-select-multiple').click(); }
-  addToChallenges()      { this.controlFunctions.addToChallenges(this.pathId); }
-  removeFromChallenges() { this.controlFunctions.removeFromChallenges(this.pathId); }
+  // addToChallenges()      { this.controlFunctions.addToChallenges(this.pathId); }
   deletePath()           { this.controlFunctions.deletePath(this.pathType, this.pathId);   }
   createNewPath()        { this.controlFunctions.createNewPath(this.pathType, this.pathId);   }
+  saveCreatedPath()      { this.controlFunctions.saveCreatedPath(this.pathType, this.polyLine.getPath());   }
   exportPathToFile()     {
     this.httpService.exportPath(this.pathType, this.pathId).subscribe( (r) => {
       window.location.href = 'http://localhost:3000/download';
     });
   }
-  saveCreatedPath()      { this.controlFunctions.saveCreatedPath(this.pathType, this.polyLine.getPath());   }
   discardCreatedPath()   { this.controlFunctions.discardCreatedPath(this.pathType);    }
-  discardImportedPath()  { this.controlFunctions.discardImportedPath(this.pathType);   }
+  discardImportedPath()  { this.controlFunctions.discardImportedPath(this.pathType);  }
 
   /**
-   * enables user to select start and end of path segment, and searches databse for matches
+   * Developer function to get bounding box from two points clicked on screen
    */
-  findPathOnChallenge() {
-    console.log('click');
-    const dataLayerId = this.map.data;
-    this.map.data.addListener('click', (event) => {
+  createPathCloudChallenge() {
 
-      console.log('blah');
+    this.challengeType = 'pathCloud';
+    document.documentElement.style.cursor = 'wait';
+
+    class ClickBounds {
+      public markers = [];
+      public addClick(latLng: google.maps.LatLng) {
+        if (this.markers.length === 2) {
+          this.markers = [latLng];
+        } else {
+          this.markers.push(latLng);
+          if (this.markers.length === 2) {
+
+            const p1LatLng = this.markers[0].toString().replace(/[()]/g, '').split(', ');
+            const p2LatLng = this.markers[1].toString().replace(/[()]/g, '').split(', ');
+
+            const minLat = Number(Math.min( parseFloat(p1LatLng[0]), parseFloat(p2LatLng[0]) ).toFixed(4));
+            const maxLat = Number(Math.max( parseFloat(p1LatLng[0]), parseFloat(p2LatLng[0]) ).toFixed(4));
+            const minLng = Number(Math.min( parseFloat(p1LatLng[1]), parseFloat(p2LatLng[1]) ).toFixed(4));
+            const maxLng = Number(Math.max( parseFloat(p1LatLng[1]), parseFloat(p2LatLng[1]) ).toFixed(4));
+            return [minLng, minLat, maxLng, maxLat];
+
+            // https://api.openstreetmap.org/api/0.6/map?bbox=11.54,48.14,11.543,48.145
+
+          }
+        }
+        return null;
+      }
+    }
+
+    const clickBounds = new ClickBounds();
+    this.map.addListener('click', (event) => {
+      const navigate = clickBounds.addClick(event.latLng);
+      if (navigate) {
+        console.log('navigate');
+        this.httpService.getOpenStreetMapData(navigate).subscribe( (result) => {
+          console.log(result.geoJson);
+          this.dataService.storeNewPath(result.geoJson);
+          this.router.navigate(['paths', this.pathType, '-1']);
+
+          // this.map.data.addGeoJson(result.geoJson);
+
+        });
+      }
     });
+
   }
+
+
+
+/*******************************************************************************************
+ *
+ *
+ * enables user to select start and end of path segment, and searches databse for matches
+ * call to navigation is performed in marker click listener in function addMarker()
+ *
+ *
+ *******************************************************************************************/
+
+  findPathOnChallenge() {
+
+    class PathSegment {
+
+      public lastPoint: google.maps.LatLng;
+
+      private markers = [];
+      private indices = [];
+      private polyLine: google.maps.Polyline;
+      private mapInstance: google.maps.Map;
+
+      constructor(mapInstance: google.maps.Map) {
+
+        this.polyLine = new google.maps.Polyline({
+          map: mapInstance,
+          editable: false,
+        });
+
+        this.mapInstance = mapInstance;
+      }
+
+      public countMarkers() {
+        return this.markers.length;
+      }
+
+      public countClickedMarkers() {
+        return this.markers.map( (m) => m.isClicked ? 1 : 2 ).reduce( (a, c) => a + c, 0 );
+      }
+
+      /**
+       * sets the polyline content
+       */
+      private setSegment() {
+        const minIndex = Math.min(this.indices[0], this.indices[1]);
+        const maxIndex = Math.max(this.indices[0], this.indices[1]);
+        const polyPath = targetPath.slice(minIndex, maxIndex + 1);
+        this.polyLine.setPath(polyPath.map((p) => new google.maps.LatLng(p[1], p[0]) ));
+      }
+
+      /**
+       * class entry point; determines what methods to action
+       * @param point point on line that is closest to the current cursor position
+       */
+      public newPoint(point: any) {
+
+        if ( this.lastPoint ) {
+
+          if ( !point.latLng.equals(this.lastPoint) ) {
+
+            this.removeUnclickedMarkers();
+
+            if (this.countClickedMarkers() < 2) {
+              this.addUnclickedMarker(point.latLng, point.index);
+            }
+
+            if (this.countMarkers() === 2) {
+              this.setSegment();
+            }
+
+          }
+        }
+      }
+
+      /**
+       * flushes the markers and indices arrays of any unclicked points
+       */
+      public removeUnclickedMarkers() {
+
+        // remove any markers from map that havent been clicked
+        // dont change order of pop/shift or strange things happen
+        if (this.markers[1] && this.markers[1].isClicked === false) {
+          this.markers.pop().setMap(null);
+          this.indices.pop();
+        }
+
+        if (!!this.markers[0] && this.markers[0].isClicked === false) {
+          this.markers.shift().setMap(null);
+          this.indices.shift();
+        }
+
+      }
+
+      /**
+       * returns marker point with click listener
+       * @param latLng desired position as google.maps.Latlng
+       * @param mapInstance instance of map on which to implement marker
+       * @param marks array of existing point instances
+       * @returns marker id
+       */
+      private addUnclickedMarker(latLng: google.maps.LatLng, index: Number) {
+
+        // initialise marker
+        const circle = new google.maps.Marker({
+          position: latLng,
+          clickable: true,
+          map: this.mapInstance,
+          zIndex: 10,
+          icon: {
+            strokeColor: '#000000',
+            strokeWeight: 2,
+            fillOpacity: 0,
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 5,
+          }
+        });
+        circle['isClicked'] = false;
+
+        // update class properties
+        this.markers.push(circle);
+        this.indices.push(index);
+
+        // add click listener
+        circle.addListener('click', () => {
+          this.toggleMarker(circle);
+          this.navigate();
+        });
+
+      }
+
+      /**
+       * toggle the properties of a marker between clicked and unclicked states
+       * @param marker target marker
+       */
+      private toggleMarker(marker: google.maps.Marker) {
+        // change marker properties
+        marker['isClicked'] = !marker['isClicked'];
+        marker.setZIndex(marker['isClicked'] ? 20 : 10);
+        marker.setIcon({
+          strokeColor: '#000000',
+          strokeWeight: 2,
+          fillOpacity: marker['isClicked'] ? 1 : 0,
+          fillColor: '#000000',
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 5,
+        });
+      }
+
+      /**
+       *determine if navigation is required based on number of clicked points
+        */
+      private navigate() {
+        if ( this.markers[1] && this.markers[1]['isClicked'] ) {
+          console.log('navigate');
+        }
+      }
+
+    } // end of class definition
+
+    const PROXIMITY_THRESHOLD = 500;
+    const targetPath = this.path.features[0].geometry.coordinates;  // route to run algorithm on
+    const pathSegment = new PathSegment(this.map);
+
+    this.map.addListener('mousemove', (event) => {
+      getNearestPoint(event.latLng, targetPath).then( (nearestPoint) => {
+
+        const distance = google.maps.geometry.spherical.computeDistanceBetween(event.latLng, nearestPoint.latLng);
+
+        if (pathSegment.countMarkers() <= 2 && distance < PROXIMITY_THRESHOLD) {
+          pathSegment.newPoint(nearestPoint);
+          pathSegment.lastPoint = nearestPoint.latLng;
+        } else {
+
+          if ( distance > PROXIMITY_THRESHOLD) {
+            pathSegment.removeUnclickedMarkers();
+          }
+        }
+
+      });
+    });
+
+  /**
+   * returns the point in array than is closests to the current cursor position
+   * @param cursorLatLng google.maps.Latlng cursor position from event
+   * @param pointArray array of point coordinates in LNG, LAT order
+   * @returns google.maps.LatLng position of nearest point
+   */
+    function getNearestPoint(cursorLatLng: google.maps.LatLng, pointArray: Array<number>) {
+
+      return new Promise<any>( (res, rej) => {
+        let closestDistance = 9999999;
+        let index: number;
+
+        // would be possible to implement point skipping if this algorithm needs speeding up
+        for (let i = 0; i < pointArray.length; i++) {
+          const currPoint = new google.maps.LatLng(pointArray[i][1], pointArray[i][0]);
+          const currDistance = google.maps.geometry.spherical.computeDistanceBetween(cursorLatLng, currPoint);
+          if ( currDistance < closestDistance ) {
+            closestDistance = currDistance;
+            index = i;
+          }
+        }
+
+        res({
+          latLng: new google.maps.LatLng(pointArray[index][1], pointArray[index][0]),
+          index: index
+        });
+      });
+    }
+
+  }
+
+/*******************************************************************************************
+ *
+ *
+ *
+ *
+ *
+ *
+ *******************************************************************************************/
 
   /**
    * user wants to save a path that was imported, following review
    */
   saveImportedPath() {
     const data = this.dataService.getCreateRouteDetails();
-    this.httpService.savePath(this.pathType, this.pathId, data).subscribe( (result) => {
+    let payload: any;
+    if (this.pathType === 'challenge') {
+      payload = {
+        type: this.challengeType,
+        name: data.name,
+        description: data.desc,
+        // pathIds: this.challengeType = 'paths' ? this.pathIDs : null
+      };
+    } else {
+      payload = data;
+    }
+    this.httpService.savePath(this.pathType, this.pathId, payload).subscribe( (result) => {
       this.router.navigate(['paths', this.pathType, this.pathId]);
     });
   }
@@ -495,11 +758,6 @@ export class MapComponent implements OnInit, OnDestroy {
 
   }
 
-/**
- * CREATE PATH ACTIONS
- *
- *
- */
 
 /**
  *

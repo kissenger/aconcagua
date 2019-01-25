@@ -43,7 +43,7 @@ export class ListComponent implements OnInit, OnDestroy {
 
     this.paramsSubs = this.activatedRouter.params.subscribe(params => {
 
-      this.pathType = params.type;
+      this.pathType = params.pathType;
       this.pathId = params.id;
 
       this.timer = setInterval( () => {
@@ -108,10 +108,13 @@ export class ListComponent implements OnInit, OnDestroy {
     document.getElementById(this.pathId).style.backgroundColor = '#FFFFFF';
     document.getElementById(idFromClick).style.backgroundColor = '#E9E2CB';
 
-    this.httpService.getPathById(this.pathType, idFromClick, true).subscribe( () => {
-        this.router.navigate(['paths', this.pathType, idFromClick]);
-        document.documentElement.style.cursor = 'default';
-      });
+    this.router.navigate(['paths', this.pathType, idFromClick]);
+    document.documentElement.style.cursor = 'default';
+
+    // this.httpService.getPathById(this.pathType, idFromClick, true).subscribe( () => {
+    //     this.router.navigate(['paths', this.pathType, idFromClick]);
+    //     document.documentElement.style.cursor = 'default';
+    //   });
   }
 
   ngOnDestroy() {

@@ -1,56 +1,121 @@
 
+// const getRandomColour = require('./utils.js').getRandomColour;
+// const Path = require('./_Path.js').Path;
+const outerBoundingBox = require('./geoLib.js').outerBoundingBox;
 
-const getRandomColour = require('./utils.js').getRandomColour;
 
-class GeoJson {
+class GeoJson{
 
-  // format data for transmission to the front end
+  /**
+   * Returns a GeoJson feature collection object
+   * @param {Mongo Document} mongoPathDocs can be array of docs or single dco returned from mongo
+   * NOTE: if plotType is present will expect a single mongoPathDoc
+   * @param {string} plotType 'binary', 'contour' or not present
+   * @param {Mongo Document} mongoMatchDoc match document is binary or contour plot is reqd
+   */
+  constructor(mongoPathDocs, plotType, mongoMatchDoc) {
 
-  constructor( pathArray ) {
+    mongoPathDocs = mongoPathDocs instanceof Array ? mongoPathDocs : [mongoPathDocs];
+    let features = [];
+    let bboxArray = [];
 
-    // ensure we were passed an array, if not then make it one
-    if ( !(pathArray instanceof Array) ) pathArray=[pathArray];
+    mongoPathDocs.forEach(document => {
 
-    let path = [];
-    let outerBbox = [ 180, 90, -180, -90 ]; //minLng, minLat, maxLng, maxLat
+      let segments = typeof document.geometry.coordinates[0][0][0] === 'undefined' ? [document.geometry.coordinates] : document.geometry.coordinates;
+      segments.forEach( (segment, i) => {
+        if (!plotType) { features.push(new GeoJsonFeature(segment, null, getPathProps(document) )); }
+        else if (plotType === 'binary')  { features.push(getBinaryFeatures(segment, mongoMatchDoc.params.nmatch[i])); }
+        else if (plotType === 'contour') { features.push(getContourFeatures(segment, mongoMatchDoc.params.nmatch[i])); }
+      })
 
-    pathArray.forEach ((p, i) => {
-
-      const bbox = [p.stats.bbox[0], p.stats.bbox[1], p.stats.bbox[2], p.stats.bbox[3]];
-
-      path.push({
-        type: 'Feature',
-        bbox: bbox,
-        geometry: {
-          type: 'linestring',
-          coordinates: p.geometry.coordinates
-        },
-        properties: {
-          startTime: p.startTime,
-          userId: p.userId,
-          pathId: p._id,
-          creationDate: p.creationDate,
-          pathType: p.pathType,
-          description: p.description,
-          color: getRandomColour(i),
-          category: p.category,
-          name: p.name.length === 0 ? p.category + ' ' + p.pathType : p.name,
-          stats: {...p.stats, ...{startTime: p.startTime}}
-        },
-      });
-
-      outerBbox[0] = bbox[0] < outerBbox[0] ? bbox[0] : outerBbox[0];
-      outerBbox[1] = bbox[1] < outerBbox[1] ? bbox[1] : outerBbox[1];
-      outerBbox[2] = bbox[2] > outerBbox[2] ? bbox[2] : outerBbox[2];
-      outerBbox[3] = bbox[3] > outerBbox[3] ? bbox[3] : outerBbox[3];
-
+      bboxArray.push(document.stats.bbox);
     })
 
     return {
-      "type": "FeatureCollection",
-      "bbox": outerBbox,
-      "features": path.map(x => x)
+      type: 'FeatureCollection',
+      plotType: plotType ? plotType : 'route',
+      stats: plotType ? mongoMatchDoc.stats : {},
+      bbox: outerBoundingBox(bboxArray),
+      features: features,
+      properties: {
+        pathId: mongoPathDocs[0] ? mongoPathDocs[0]._id : null
+      }
     }
+
+  }
+
+}
+
+
+/**
+ *
+ * @param {*} doc
+ */
+function getPathProps(doc) {
+  return {
+    userId: doc.userId,
+    pathType: doc.pathType,
+    category: doc.category,
+    startTime: doc.startTime,
+    creationDate: doc.creationDate,
+    description: doc.description
+  }
+}
+
+/**
+ *
+ * @param {*} lngLats
+ * @param {*} nmatch
+ */
+function getBinaryFeatures(lngLats, nmatch) {
+
+  let slices = [];
+  let i0 = 0;
+  let c0;
+  let wasMatched = false;
+
+  for (let i = 1; i < lngLats.length; i++) {
+
+    let isMatched = nmatch[i] === 0 ? false : true;
+    const colour = ( isMatched && wasMatched ) ?  '#0000FF' : '#FF0000';
+
+    if ( i > 1 && colour !== c0 || i === lngLats.length - 1 ) {
+      segSlice = lngLats.slice(i0, i === (lngLats.length - 1) ? i+2 : i);
+      slices.push(new GeoJsonFeature(segSlice, c0));
+      i0 = i - 1;
+    }
+
+    c0 = colour;
+    wasMatched = isMatched;
+  }
+  return slices;
+}
+
+
+class GeoJsonFeature {
+
+  /**
+   *
+   * @param {*} lngLats
+   * @param {*} colour
+   * @param {*} properties
+   */
+  constructor (lngLats, colour, properties) {
+
+    if (!properties) properties = {};
+    if (!colour) colour = '#FF0000'
+
+    return {
+      type: 'Feature',
+      geometry: {
+        type: 'Linestring',
+        coordinates: lngLats
+      },
+      properties: {
+        color: colour,
+        ...properties
+      }
+    };
 
   }
 

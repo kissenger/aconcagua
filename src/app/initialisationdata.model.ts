@@ -73,8 +73,8 @@ export class InitialisationData {
     btnLoad:   { text: 'import single file', clickFunction: 'loadSinglePath', isEnabled: true },
     btnBatch:  { text: 'import multiple files', clickFunction: 'loadMultiplePaths', isEnabled: true},
     btnExport: { text: 'export .gpx', clickFunction: 'exportPathToFile', isEnabled: true},
-    btnUseAsChallenge:  { text: 'use as challenge', clickFunction: 'addToChallenges', isEnabled: true },
-    btnRemoveChallenge: { text: 'remove challenge', clickFunction: 'removeFromChallenges', isEnabled: true},
+    // btnUseAsChallenge:  { text: 'use as challenge', clickFunction: 'addToChallenges', isEnabled: true },
+    btnDeleteChallenge: { text: 'delete challenge', clickFunction: 'deletePath', isEnabled: true},
     btnSaveImported:   { text: 'save', clickFunction: 'saveImportedPath', isEnabled: true },
     btnDiscardImported:        { text: 'discard', clickFunction: 'discardImportedPath', isEnabled: true },
     btnCreateRouteOnChall: { text: 'create route on this challenge', clickFunction: 'createNewPath', isEnabled: true },
@@ -85,7 +85,10 @@ export class InitialisationData {
     btnClose:  { text: 'close path', clickFunction: 'closePath', isEnabled: true },
     btnSaveCreated:     { text: 'save route', clickFunction: 'saveCreatedPath', isEnabled: true },
     btnDiscardCreated:   { text: 'discard', clickFunction: 'discardCreatedPath', isEnabled: true },
-    btnMeasureDistance: {text: 'measure distance', clickFunction: 'measureDistance', isEnabled: true}
+    btnMeasureDistance: {text: 'measure distance', clickFunction: 'measureDistance', isEnabled: true},
+    // btnGetBoundingBox: {text: 'get bounding box', clickFunction: 'getBoundingBox', isEnabled: true},
+    btnNewPathCloudChallenge: {text: 'create new challenge: path cloud', clickFunction: 'createPathCloudChallenge', isEnabled: true},
+    btnNewPathsChallenge: {text: 'create new challenge: routes', clickFunction: 'createPathsChallenge', isEnabled: true}
   };
 
   private checkBoxes = {

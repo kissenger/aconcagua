@@ -3,26 +3,33 @@ const express = require('express');
 const app = express();
 const multer = require('multer');
 const bodyParser = require('body-parser');
+const request = require('request');
 
 // Local functions
-// const filefun = require('./filefun.js');
 const Match = require('./_Match.js').Match;
 const Notification = require('./_Notification.js').Notification;
 const NewMatch = require('./_Match.js').NewMatch;
 const Route = require('./_Path').Route;
 const Path = require('./_Path').Path;
 const GeoJson = require('./_GeoJson.js').GeoJson;
+const PathCloud = require('./_Challenge.js').PathCloud;
 const ListData = require('./_ListData.js').ListData;
 const auth = require('./auth.js');
 const writeGpx = require('./gpx.js').writeGpx;
 const readGpx = require('./gpx.js').readGpx;
+const parseOSM = require('./gpx.js').parseOSM;
+// const outerBbox = require('./geoLib.js').outerBbox;
+
 
 // Mongoose setup ... mongo password: p6f8IS4aOGXQcKJN
 const mongoose = require('mongoose');
 const MongoPath = require('./models/path-models');
 const MongoMatch = require('./models/match-models');
+const MongoChallenges = require('./models/challenge-models');
 const MongoNotice = require('./models/notification-models');
 // const MongoUsers = require('./models/user-models');
+
+// let osmPathsArray = {};
 
 // Websocket
 // https://stackoverflow.com/questions/22429744/how-to-setup-route-for-websocket-server-in-express
@@ -39,11 +46,11 @@ websocket.getWss().on('connection', function(ws) {
 
 app.listen(80);
 
-/**
+/******************************************************************
  *
  * setup
  *
- */
+ ******************************************************************/
 
 // Set up Cross Origin Resource Sharing (CORS )
 app.use( (req, res, next) => {
@@ -60,11 +67,11 @@ app.use(bodyParser.json());
 app.use(auth.authRoute);
 app.use(express.static('backend/files'));
 
-/**
+/******************************************************************
  *
  * mongo
  *
- */
+ ******************************************************************/
 
 mongoose.connect('mongodb+srv://root:p6f8IS4aOGXQcKJN@cluster0-gplhv.mongodb.net/test?retryWrites=true')
   .then(() => {
@@ -88,6 +95,47 @@ var upload = multer({
     fileSize: 10 * 1024 * 1024
   }
 });
+
+
+
+
+
+/*****************************************************************
+ *
+ * get .osm file from openstreetmaps api
+ *
+ *****************************************************************/
+
+app.post('/get-osm-data/', auth.verifyToken, (req, res) => {
+
+  // ensure user isauthorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  const boundingBox = req.body;
+  const bboxAsString = boundingBox[0] + ',' + boundingBox[1] + ',' + boundingBox[2] + ',' + boundingBox[3];
+  const osmUrl = 'http://api.openstreetmap.org/api/0.6/map?bbox=' + bboxAsString;
+
+  request.get({url: osmUrl}, (error, response, body) => {
+    if(error) {
+      res.status(400).json({error: error});
+    } else {
+
+      const temp = parseOSM(body, boundingBox);
+      pathCloud = new PathCloud(temp, userId);
+      MongoChallenges.Challenges.create(pathCloud.getMongoObject()).then(documents => {
+        res.status(201).json({geoJson: new GeoJson(documents)});
+      });
+
+
+
+    }
+  });
+
+});
+
 
 /*****************************************************************
  *
@@ -132,7 +180,7 @@ app.post('/import-tracks/:singleOrBatch', auth.verifyToken, upload.array('filena
     MongoPath.Tracks
       .create(paths.map(p => p.mongoFormat(userId, false)))
       .then( (documents) => {
-        res.status(201).json({'geoJson': new GeoJson(documents)});
+        res.status(201).json({geoJson: new GeoJson(documents)});
       })
   }
 
@@ -167,6 +215,67 @@ app.post('/import-route/', auth.verifyToken, upload.single('filename'), (req, re
 });
 
 
+/*****************************************************************
+ *
+ *  Create a challenge
+ *
+ *
+ *****************************************************************/
+
+// app.post('/create-challenge/', auth.verifyToken, (req, res) => {
+
+//   // {type: 'paths',
+//   // pathIds: [pathId1, pathId2],
+//   // name: 'blah',
+//   // description: 'blah blah'}
+
+//   // {type: 'pathCloud',
+//   // lngLats: [[lngLats], [lngLats]]
+//   // name: 'blah',
+//   // description: 'blah blah'}
+
+//   // {type: 'pointCloud',
+//   // lngLats: [lngLats],
+//   // name: 'blah',
+//   // description: 'blah blah'}
+
+//     // ensure user is authorised
+//   const userId = req.userId;
+//   if ( !userId ) {
+//     res.status(401).send('Unauthorised');
+//   }
+
+//   condition = {};
+//   challenge = req.body;
+//   if (challenge.type = 'paths') {
+
+//     query = challenge.pathIds.map( (x) => 'ObjectId(\'' + x + '\')')
+//     MongoRoutes.find({'_id': {'$in': query}}, {distance: 1, bbox: 1}).then( (result) => {
+//       totalDistance = result.map ( x => x.distance).reduce((prev, curr) => prev + curr);
+//       bbox = outerBbox(result.map( x => x.bbox))
+//       challenge['totalDistance'] = totalDistance;
+//       // launch matching
+//     })
+
+
+//   } else if (challenge.type = 'pathCloud') {
+
+//     if (osmPathsArray) {       // global variable set by xxxxxxx(tbc)
+//       challenge['lngLat'] = osmPathsArray.map(x => x.lngLat); // array of Path objects
+//     } else {
+//       res.status(400).json({error: 'no pathCloud ddata on the backend'});
+//     }
+//     totalDistance = osmPathsArray.map(x => x.distance).reduce((prev, curr) => prev + curr);
+//     challenge['totalDistance'] = totalDistance;
+//   }
+
+//   MongoChallenges.create(challenge).then( () => {
+//     res.status(200).json({status: 'success'});
+//   });
+
+
+// });
+
 
 
 /*****************************************************************
@@ -176,52 +285,47 @@ app.post('/import-route/', auth.verifyToken, upload.single('filename'), (req, re
  *
  *****************************************************************/
 
-app.get('/move-path/:id/:from/:to', auth.verifyToken, upload.single('filename'), (req, res) => {
+// app.get('/move-path/:id/:from/:to', auth.verifyToken, (req, res) => {
 
-  let fromModel;
-  let toModel;
-  // ensure user is authorised
-  const userId = req.userId;
-  if ( !userId ) {
-    res.status(401).send('Unauthorised');
-  }
+//   let fromModel;
+//   let toModel;
+//   // ensure user is authorised
+//   const userId = req.userId;
+//   if ( !userId ) {
+//     res.status(401).send('Unauthorised');
+//   }
 
-  if ( req.params.from === 'challenge' ) { fromModel = MongoPath.Challenges };
-  if ( req.params.from === 'track' ) { fromModel  = MongoPath.Tracks } ;
-  if ( req.params.from === 'route' ) { fromModel  = MongoPath.Routes } ;
+//   if ( req.params.from === 'challenge' ) { fromModel = MongoPath.Challenges };
+//   if ( req.params.from === 'track' ) { fromModel  = MongoPath.Tracks } ;
+//   if ( req.params.from === 'route' ) { fromModel  = MongoPath.Routes } ;
 
-  if ( req.params.to === 'challenge' ) { toModel = MongoPath.Challenges };
-  if ( req.params.to === 'track' ) { toModel  = MongoPath.Tracks } ;
-  if ( req.params.to === 'route' ) { toModel  = MongoPath.Routes } ;
+//   if ( req.params.to === 'challenge' ) { toModel = MongoPath.Challenges };
+//   if ( req.params.to === 'track' ) { toModel  = MongoPath.Tracks } ;
+//   if ( req.params.to === 'route' ) { toModel  = MongoPath.Routes } ;
 
-  fromModel.findOne( {'userId': userId, '_id': req.params.id} ).then((a) => {
-    const c = a.toObject();
-    delete c.__v;
-    delete c._id;
-    fromModel.findByIdAndRemove(mongoose.Types.ObjectId(req.params.id), (msg) => {});
-    toModel.create(c).then( (b) =>
-    {
-      res.status(201).json( {pathId: b._id} );
+//   fromModel.findOne( {'userId': userId, '_id': req.params.id} ).then((a) => {
+//     const c = a.toObject();
+//     delete c.__v;
+//     delete c._id;
+//     fromModel.findByIdAndRemove(mongoose.Types.ObjectId(req.params.id), (msg) => {});
+//     toModel.create(c).then( (b) =>
+//     {
+//       res.status(201).json( {pathId: b._id} );
 
-      if ( req.params.to === 'challenge' ) {
-        // if route --> challenge then call match anal
-        getMatchFromImportRoute(userId, b._id)
+//       if ( req.params.to === 'challenge' ) {
+//         // if route --> challenge then call match anal
+//         getMatchFromImportRoute(userId, b._id)
+//       }
+//       if (req.params.to === 'route' ) {
+//         // if challenge --> route then delete any match data
+//         matchDelete(req.params.id, req.params.type);
+//         res.status(201).json( {status: 'deleted ok'});
+//       }
 
-        // .then( (result) => {
-        //   res.status(201).json(result);
-        // });
+//     })
+//   })
 
-      }
-      if (req.params.to === 'route' ) {
-        // if challenge --> route then delete any match data
-        matchDelete(req.params.id, req.params.type);
-        res.status(201).json( {status: 'deleted ok'});
-      }
-
-    })
-  })
-
-});
+// });
 
 
 /*****************************************************************
@@ -234,44 +338,36 @@ app.get('/move-path/:id/:from/:to', auth.verifyToken, upload.single('filename'),
 app.post('/save-path/:type/:id',  auth.verifyToken, (req, res) => {
 
   // ensure user is authorised
-  const userId = req.userId;
-  if ( !userId ) {
+  if ( !req.userId ) {
     res.status(401).send('Unauthorised');
   }
 
-  let pathModel;
-  let condition = {}, filter = {};
-
-  // get the appropriate model
-  if ( req.params.type === 'route' ) { pathModel  = MongoPath.Routes } ;
-  if ( req.params.type === 'challenge' ) { pathModel = MongoPath.Challenges };
-  if ( req.params.type === 'track' ) { pathModel  = MongoPath.Tracks } ;
-
   // construct query based on incoming payload
-  condition['_id'] = req.params.id;
-  condition['userId'] = userId;
-  filter['isSaved'] = true;
-  console.log(req.body.description);
+  let condition = {_id: req.params.id, userId: req.userId};
+  let filter = {isSaved: true};
   if ( typeof req.body.description !== "undefined" ) { filter['description'] = req.body.description; }
   if ( typeof req.body.name !== "undefined" ) { filter['name'] = req.body.name; }
 
-  console.log(filter);
-
   // query database, updating change data and setting isSaved to true
-  pathModel
+  mongoModel(req.params.type)
     .updateOne(condition, {$set: filter}, {writeConcern: {j: true}})
-    .then( (document) => {
-
+    .then( () => {
       res.status(201).json( {'result': 'save ok'} );
 
       if ( req.params.type === 'track' ) {
         matchNewTrack(req.params.id);
-      } else if ( req.params.type === 'challenge' ) {
-      }
 
-    });
+      } else if ( req.params.type === 'challenge' ) {
+        getMatchFromImportRoute(req.userId, req.params.id).then( () => {
+          notify(req.userId, req.params.id, 'route', 'New Challenge', 'Analysis of new challenge route complete');
+        });
+
+      } // if
+    }) // then
 
 });
+
+
 
 
 /*****************************************************************
@@ -287,23 +383,12 @@ app.get('/delete-path/:type/:id', auth.verifyToken, (req, res) => {
     res.status(401).send('Unauthorised');
   }
 
-  let pathModel;
-  let condition = {}, filter = {};
-
-  // get the appropriate model
-  if ( req.params.type === 'route' ) { pathModel  = MongoPath.Routes} ;
-  if ( req.params.type === 'challenge' ) { pathModel = MongoPath.Challenges };
-  if ( req.params.type === 'track' ) { pathModel  = MongoPath.Tracks} ;
-
-
-
   // construct query based on incoming payload
-  condition['_id'] = req.params.id;
-  condition['userId'] = userId;
-  filter['isSaved'] = false;
+  let condition = {_id: req.params.id, userId: userId};
+  let filter = {isSaved: false};
 
   // query database, updating change data and setting isSaved to true
-  pathModel
+  mongoModel(req.params.type)
     .updateOne(condition, {$set: filter})
     .then( () => { res.status(201).json( {'result': 'delete ok'} ) },
         (err) => { res.status(201).json(err) });
@@ -323,105 +408,107 @@ app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
    *  name
    *  */
 
-  // variables
-  let pathModel;
-  let condition = {}, filter = {}, sort = {};
   const LIMIT = 50 //number of items to return in one query
 
   // ensure user is authorised
   const userId = req.userId;
-
   if ( !userId ) {
     res.status(401).send('Unauthorised');
   }
 
   // get the appropriate model and setup query
-  condition['isSaved'] = true;
-  condition['userId'] = userId;
-  filter['stats'] = 1;
-  filter['name'] = 1;
-  filter['pathType'] = 1;
-  filter['category'] = 1;
-
-  if ( req.params.type === 'route' ) {
-    pathModel = MongoPath.Routes;
-    filter['creationDate'] = 1;
-    sort['creationDate'] = -1;
-  };
-
-  if ( req.params.type === 'challenge' ) {
-    pathModel = MongoPath.Challenges;
-    filter['creationDate'] = 1;
-    sort['creationDate'] = -1;
-  };
+  let condition = {isSaved: true, userId: userId};
+  let filter = {stats: 1, name: 1, pathTupe: 1, category: 1};
+  let sort = {};
 
   if ( req.params.type === 'track' ) {
-    pathModel = MongoPath.Tracks;
     filter['startTime'] = 1;
     sort['startTime'] = -1;
-  };
+  } else {
+    filter['creationDate'] = 1;
+    sort['creationDate'] = -1;
+  }
 
   // execute the query and return result to front-end
-  console.log('get-paths-list: list query');
-  pathModel.countDocuments(condition).then( (count) => {
-    console.log('get-paths-list: got number of docs');
-    pathModel
+  mongoModel(req.params.type).countDocuments(condition).then( (count) => {
+    mongoModel(req.params.type)
       .find(condition, filter).sort(sort).limit(LIMIT).skip(LIMIT*(req.params.offset))
       .then(documents => {
-        console.log('get-paths-list: sending data');
         res.status(201).json(new ListData(documents, count)) });
     })
   })
+
+
+// /*****************************************************************
+//  *  Retrieve a single path from database
+//  *  id of required path is supplied
+//  *****************************************************************/
+// app.get('/get-path-by-id/:type/:id/:idOnly', auth.verifyToken, (req, res) => {
+
+//   // ensure user is authorised
+//   if ( !req.userId ) {
+//     res.status(401).send('Unauthorised');
+//   }
+
+//   // query the database and return result to front end
+//   if ( req.params.id === '0' ) res.status(201).json({'id': 0})
+//   else {
+
+//     console.log('get-path-by-id', req.params.id);
+
+//     getPathFromId(req.params.id, req.params.type).then( path => {
+
+//       if ( req.params.idOnly === 'true' ) res.status(201).json({pathId: path._id});
+//       else {
+//         if (req.params.type === 'challenge') {
+//           getMatchFromDb(path).then( plotOptions => {
+//             // console.log(1, req.params.id, plotOptions);
+//             res.status(201).json({geoJson: new GeoJson(path), ...plotOptions});
+//           });
+//         } else {
+//           // console.log(2);
+//           res.status(201).json({geoJson: new GeoJson(path)});
+//         }
+//       }
+//     })
+//   }
+// })
 
 
 /*****************************************************************
  *  Retrieve a single path from database
  *  id of required path is supplied
  *****************************************************************/
-app.get('/get-path-by-id/:type/:id/:idOnly', auth.verifyToken, (req, res) => {
+app.get('/get-path-by-id/:type/:id', auth.verifyToken, (req, res) => {
 
   // ensure user is authorised
-  const userId = req.userId;
-  if ( !userId ) {
+  if ( !req.userId ) {
     res.status(401).send('Unauthorised');
   }
 
-  // get the appropriate model
-  if ( req.params.type === 'route' ) { var pathModel = MongoPath.Routes };
-  if ( req.params.type === 'challenge' ) { var pathModel = MongoPath.Challenges };
-  if ( req.params.type === 'track' ) { var pathModel = MongoPath.Tracks };
-
   // query the database and return result to front end
-  if ( req.params.id === '0' ) res.status(201).json({'id': 0})
-  else {
-
-    pathModel.find({userId: userId, _id: req.params.id}).then(documents => {
-
-      if ( req.params.idOnly === 'true' ) {
-        // request was from list component , for id only
-        res.status(201).json({pathId: documents[0]._id});
-
-      } else {
-        // need to send everything
-
-        let retRoute= {geoJson: new GeoJson(documents)};
-        if ( req.params.type === 'challenge' ) {
-          // challenge so get matches
-          getMatchFromDb(documents[0]).then( (retMatch) => {
-            res.status(201).json({...retRoute, ...retMatch});
-          });
-
-        } else {
-          // not a challenge
-          res.status(201).json(retRoute);
-        }
-
-      };
-
-    });
-  } // if (req ...)
+  getPathFromId(req.params.id, req.params.type).then( path => {
 
 
+    temp = new GeoJson(path);
+    console.log(temp.stats);
+
+
+    if (req.params.type === 'challenge') {
+
+
+
+
+      getMatchFromDb(path).then( plotOptions => {
+
+        // console.log(1, req.params.id, plotOptions);
+        res.status(201).json({geoJson: new GeoJson(path), ...plotOptions});
+      });
+    } else {
+      // console.log(2);
+      res.status(201).json({geoJson: new GeoJson(path)});
+    }
+  })
 })
 
 
@@ -472,22 +559,17 @@ app.get('/get-path-by-id/:type/:id/:idOnly', auth.verifyToken, (req, res) => {
 app.post('/save-created-route/:type', auth.verifyToken, (req, res) => {
 
   // ensure user is authorised
-  const userId = req.userId;
-  if ( !userId ) {
+  if ( !req.userId ) {
     res.status(401).send('Unauthorised');
   }
 
-
   if ( req.params.type === 'track' ) {
-    var pathModel = MongoPath.Tracks
     var path = new Track(req.body.name, req.body.description, req.body.geometry.coordinates);
   } else {
-    var pathModel = MongoPath.Routes
     var path = new Route(req.body.name, req.body.description, req.body.geometry.coordinates);
   }
 
-  // Read file data & convert to geojson format
-  pathModel.create(path.mongoFormat(userId, true)).then( (document) => {
+  mongoModel(req.params.type).create(path.mongoFormat(req.userId, true)).then( (document) => {
     res.status(201).json({pathId: document._id});
   })
 })
@@ -503,17 +585,16 @@ app.post('/save-created-route/:type', auth.verifyToken, (req, res) => {
 app.get('/export-path/:type/:id/', auth.verifyToken, (req, res) => {
 
   // ensure user is authorised
-  const userId = req.userId;
-  if ( !userId ) {
+  if ( !req.userId ) {
     res.status(401).send('Unauthorised');
   }
 
   // Read file data & convert to geojson format
 
-  MongoPath.Routes.find({userId: userId, _id: req.params.id}).then(document => {
+  MongoPath.Routes.find({userId: req.userId, _id: req.params.id}).then(document => {
 
     let route = new Path(document[0].geometry.coordinates, document[0].params.elev);
-    writeGpx(route).then( (data) => {
+    writeGpx(route).then( () => {
       res.status(201).json({status: 'export ok'});
     });
 
@@ -529,6 +610,7 @@ app.get('/download', (req, res) => {
       console.log('success');
     }
   } );
+
 })
 /*****************************************************************
  *
@@ -537,72 +619,49 @@ app.get('/download', (req, res) => {
  *****************************************************************/
 app.get('/flush', (req, res) => {
 
-  MongoPath.Routes.deleteMany( {'isSaved': false} )
-    .then( () => {
-      MongoPath.Tracks.deleteMany( {'isSaved': false} )
-        .then( () => {
-          res.status(201).json( {'result': 'db flushed'} );
+  MongoPath.Routes.deleteMany( {'isSaved': false} ).then( () => {
+    MongoPath.Tracks.deleteMany( {'isSaved': false} ).then( () => {
+      MongoChallenges.Challenges.deleteMany( {'isSaved': false} ).then( () => {
+        res.status(201).json( {'result': 'db flushed'} );
       });
     });
+  });
 
 })
 
 
-/*****************************************************************
- *
- *  Perform route matching on newly uploaded route
- *
- *****************************************************************/
-function getMatchFromImportRoute(userId, routeId) {
+//*****************************************************************
 
-  // return new Promise( resolve => {
+/**
+ * Perform route matching on newly uploaded challenge path
+ * @param {string} userId id of the user ** NOT CURRENTLY USED **
+ * @param {string} challengeId is of the challenge
+ * @param {object} returns match object
+ */
+function getMatchFromImportRoute(userId, challengeId) {
 
-    MongoPath.Challenges.find( {'_id': routeId} ).then( (result) => {
+  console.log('> getMatchFromImportRoute');
+  return new Promise( resolve => {
 
-      const route = result[0];
-      console.log(route);
-      const geomQuery = {
-        'type': 'Polygon',
-        'coordinates': [[
-          [ route.stats.bbox[0], route.stats.bbox[1] ],
-          [ route.stats.bbox[2], route.stats.bbox[1] ],
-          [ route.stats.bbox[2], route.stats.bbox[3] ],
-          [ route.stats.bbox[0], route.stats.bbox[3] ],
-          [ route.stats.bbox[0], route.stats.bbox[1] ]
-        ]]
-      };
+    console.log('getMatchFromImportRoute');
+    getPathFromId(challengeId, 'challenge').then( (challenge) => {
+      getMatchingPathsFromBbox(challengeId, 'challenge', 'track').then( (tracks) =>{
+        // console.log(challenge);
 
-      // find all tracks that intersect with selected route id
-      console.log('Matching tracks...');
-      MongoPath.Tracks.find( { geometry: { $geoIntersects: { $geometry: geomQuery } }}).then( (tracks) => {
-
-        // create match object
-        console.log('Matched ' + tracks.length + ' tracks');
-        const match = new NewMatch(route, tracks);
-
-        // save to db
-        MongoMatch.Match.create(match).then( () => { });
-        notice = new Notification(
-          userId,
-          routeId,
-          'route',
-          'New Challenge',
-          'Analysis of new challenge route complete',
-          false
-        );
-        MongoNotice.Notification.create(notice);
-
-        // Notify the front end
-        // TODO filter out clients with incorrect user id
-        websocket.getWss().clients.forEach( (client) => {
-          console.log('client: ' + client);
-          client.send(JSON.stringify(notice));
+        const match =  new NewMatch(challenge, tracks);
+        console.log('===========');
+        console.log(match);
+        MongoMatch.Match.create(match).then( () => {
+          console.log(match);
+          resolve(match);
         });
-
-      })
+      });
     })
-  // })
+
+  })
 }
+
+
 
 
 /*****************************************************************
@@ -611,22 +670,23 @@ function getMatchFromImportRoute(userId, routeId) {
  *
  *****************************************************************/
 
-function getMatchFromDb(route) {
+ /**
+  * Retrieve match data from a provided challenge Id
+  * @param {object} challenge mongo challenge object **not just Id its the whole shebang
+  * @param {object} returns object containing plot contour and plot binary data
+  */
+function getMatchFromDb(challenge) {
 
   return new Promise( resolve => {
+    console.log(challenge._id);
+    console.log(challenge);
+    MongoMatch.Match.find({challengeId: challenge._id}).then( (match) => {
 
-    // Get match array from db
-    MongoMatch.Match.find({'routeId': route._id}).then( (match) => {
-
-      // check for no result
-      if ( match.length === 0 ) {
-        resolve();
-      }
+      if ( match.length === 0 ) resolve();
       else {
-        var thisMatch = new Match(route, match[0]);
         resolve({
-          'geoContour': thisMatch.plotContour(),
-          'geoBinary': thisMatch.plotBinary()
+          // 'geoContour': new GeoJson(challenge, 'contour', match[0]),
+          'geoBinary': new GeoJson(challenge, 'binary', match[0])
         });
       }
 
@@ -689,100 +749,201 @@ function getMatchFromDb(route) {
   return new Promise( resolve => {
 
     // find the target track from db
-    console.log('matchNewTrack: processing track ' + trkId);
-    MongoPath.Tracks.find({'_id': trkId}).then( (results)  => {
+    console.log('> matchNewTrack');
+    console.log('matchNewTrack');
+    getPathFromId(trkId, 'track').then( (track) => {
 
-      // check for no result
-      if ( results.length === 0 ) {
-        console.error('matchNewTrack: error! track not found: ' + trkId);
-        res.status(201).json({'matchNewTrack: ': 'error'});
-        resolve();
-      }
+      if (track.length === 0) resolve(0);
+      getMatchingPathsFromBbox(trkId, 'track', 'route').then( (routes) => {
 
-      // get bounding box for search query
-      const track = results[0];
-      const geomQuery = {
-        'type': 'Polygon',
-        'coordinates': [[
-          [ track.stats.bbox[0], track.stats.bbox[1] ],
-          [ track.stats.bbox[2], track.stats.bbox[1] ],
-          [ track.stats.bbox[2], track.stats.bbox[3] ],
-          [ track.stats.bbox[0], track.stats.bbox[3] ],
-          [ track.stats.bbox[0], track.stats.bbox[1] ]
-        ]]
-      };
-
-      // find all routes that intersect with selected route id
-      console.log('matchNewTrack: get routes...');
-      MongoPath.Challenges.find( { geometry: { $geoIntersects: { $geometry: geomQuery } } }).then( (routes) => {
-
-        console.log('matchNewTrack: found ' + routes.length + ' matched routes');
         if ( routes.length === 0 ) resolve(true);
-
-        // loop through route and find match data, if it exists
         routes.forEach( (route) => {
+
           MongoMatch.Match.find( { 'routeId': route._id } ).then( (matches) => {
 
             if ( matches.length === 0 ) {
-              // match doesnt exist for this route: create it and save to db
 
-              console.log('match did not exist, creating it')
+              // match doesnt exist for this route: create it
               let newMatch = new NewMatch(route, track);
-              MongoMatch.Match
-                .create(newMatch)
-                .then( () => { resolve(true); }
-              );
+              MongoMatch.Match.create(newMatch).then( () => {
+                resolve(true);
+              });
 
             } else {
-              // match does exist: reform it and add track
 
-              console.log('match exists, creating it')
+              // match does exist: reform it and add track
               let newMatch = new Match(route, matches[0]);
               newMatch.addTracks(track);
               MongoMatch.Match
-                .replaceOne( {'_id': matches[0]._id}, newMatch, {writeConcern: { j: true}})
-                .then( () => { resolve(true); }
-              );
+                .replaceOne( {'_id': matches[0]._id}, newMatch, {writeConcern: { j: true}}).then( () => {
+                  resolve(true);
+                });
             }
 
           })
         })
-      }) // MongoPath.Routes
-    }) // MongoPath.Tracks
+      })
+
+    })
   });
 }
 
 
 /*****************************************************************
  *
- *  Return all the tracks associated with a route
+ *  Return all the tracks associated with a challenge
  *
  *****************************************************************/
-app.get('/get-matched-tracks/:routeId', auth.verifyToken, (req, res) => {
+app.get('/get-matched-tracks/:challengeId', auth.verifyToken, (req, res) => {
 
-  console.log('get matched tracks');
-  // ensure user is authorised
   const userId = req.userId;
   if ( !userId ) {
     res.status(401).send('Unauthorised');
   }
 
-  // get trksList from required route
-  MongoMatch.Match.find( {'routeId': req.params.routeId }, {'params.trksList': 1} ).then( (matches) => {
-
-    // console.log('get matched tracks:' + matches);
-    // retrieve tracks from db
-    if ( matches.length === 0) {
-      // no matches
+  getMatchingTracksFromMatchObj(req.params.challengeId).then( (tracks) => {
+    if (!tracks) {
+      res.status(201).json({result: 'no matched tracks'})
     } else {
-      // there are matches in the db
-      MongoPath.Tracks.find( { '_id': { $in: matches[0].params.trksList } } ).then( (tracks) => {
-        res.status(201).json({'geoTracks': new GeoJson(tracks)})
-      })
+      res.status(201).json({geoTracks: geoJson = new GeoJson(tracks)})
     }
-
   })
+
 })
 
+
+/*****************************************************************
+ *
+ *  Utility functions for abstraction
+ *  These are internal functions not exported
+ *
+ *****************************************************************/
+
+/**
+ * Get all the tracks that match to provided pathId (can be route or challenge)
+ * @param {string} pathId id the the path to match
+ * @param {string} pathTypeBasis type of path to match paths against
+ * @param {string} pathTypeSearch type of path to search for
+ * @param {promise} returns a promise containing array of track objects
+ */
+function getMatchingPathsFromBbox(pathId, pathTypeBasis, pathTypeSearch) {
+
+  console.log('> getMatchingTracks');
+  return new Promise( resolve => {
+
+    mongoModel(pathTypeBasis).find( {'_id': pathId} ).then( (pathToMatch) => {
+      mongoModel(pathTypeSearch).find({
+        geometry: {
+          $geoIntersects: {
+            $geometry: {
+              'type': 'Polygon',
+              'coordinates': bbox2Polygon(pathToMatch[0].stats.bbox)
+            }
+          }
+        }
+      }).then( (matchedTracks) => {
+
+        console.log('> getMatchingTracks: Matched ' + matchedTracks.length + ' tracks');
+        resolve(matchedTracks);
+
+      })
+
+    }) // mongoModel
+  }) // promise
+}
+
+
+/**
+ * Get all the tracks that match a route from an existing match object
+ * @param {string} cId challenge id
+ * @param {promise} returns a promise containing array of track objects
+ */
+function getMatchingTracksFromMatchObj(cId) {
+
+  console.log('> getMatchingTracksFromMatchObj');
+  return new Promise( resolve => {
+
+    MongoMatch.Match
+      .find( {'challengeId': cId }, {'params.trksList': 1} )
+      .then( (matches) => {
+
+        if ( matches.length === 0) {
+          resolve(0);
+        } else {
+          MongoPath.Tracks.find( { '_id': { $in: matches[0].params.trksList } } ).then( (tracks) => {
+           resolve(tracks);
+          })
+        }
+
+    })
+
+  }) // promise
+}
+
+
+/**
+ * get a mongo db entry from a provided path id
+ * @param {string} pid path id
+ * @param {string} ptype path type
+ */
+function getPathFromId(pid, ptype, getMatchData) {
+  return new Promise( resolve => {
+    mongoModel(ptype).find({_id: pid}).then( (path) => {
+      resolve(path[0]);
+    })
+  })
+}
+
+
+/**
+ * Returns the model definition for a given path type
+ * @param {string} pathType
+ */
+function mongoModel(pathType) {
+  switch(pathType) {
+    case 'challenge': return MongoChallenges.Challenges;
+    case 'route': return MongoPath.Routes;
+    case 'track': return MongoPath.Tracks;
+  }
+}
+
+
+/**
+ * Converts standard bounding box to polygon for mongo geometry query
+ * @param {number} bbox bounding box as [minlng, minlat, maxlng, maxlat]
+ */
+
+function bbox2Polygon(bbox) {
+  return [[
+    [ bbox[0], bbox[1] ],
+    [ bbox[2], bbox[1] ],
+    [ bbox[2], bbox[3] ],
+    [ bbox[0], bbox[3] ],
+    [ bbox[0], bbox[1] ]
+  ]]
+}
+
+
+/**
+ * Creates a notification item in database, and notifies the front end of its existence
+ * @param {string} uId user id
+ * @param {string} pId path id
+ * @param {string} pType path type
+ * @param {string} verb what has happened
+ * @param {string} msg message
+ */
+function notify(uId, pId, pType, verb, msg) {
+
+  MongoNotice.Notification.create(
+    new Notification( uId, pId, pType, verb, msg, false)
+  );
+
+  // TODO filter out clients with incorrect user id
+  websocket.getWss().clients.forEach( (client) => {
+    console.log('client: ' + client);
+    client.send(JSON.stringify(notice));
+  });
+
+}
 
 module.exports = app;

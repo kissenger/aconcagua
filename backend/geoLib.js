@@ -1,4 +1,3 @@
-const Point = require('./_Point.js').Point;
 
 /**
  * function p2p
@@ -19,9 +18,6 @@ const Point = require('./_Point.js').Point;
 function p2p(p1, p2) {
 
   if ( !(p1 instanceof Point) || !(p2 instanceof Point) ) {
-    console.log(p1);
-    console.log(p1 instanceof Point);
-    console.log(p1 instanceof Point);
     console.log("Error from p2p: arguments should be of Point class");
     return 0;
   }
@@ -102,8 +98,80 @@ function bearing(p1, p2) {
 
 }
 
+
+/**
+ * Returns bounding box a provided path
+ * @param {*} lngLatArray
+ */
+function boundingBox(lngLatArray) {
+  const bbox = [ 180, 90, -180, -90 ];
+  for (let i = 0, n = lngLatArray.length; i < n; i++) {
+    bbox[0] = lngLatArray[i][0] < bbox[0] ? lngLatArray[i][0] : bbox[0];
+    bbox[1] = lngLatArray[i][1] < bbox[1] ? lngLatArray[i][1] : bbox[1];
+    bbox[2] = lngLatArray[i][0] > bbox[2] ? lngLatArray[i][0] : bbox[2];
+    bbox[3] = lngLatArray[i][1] > bbox[3] ? lngLatArray[i][1] : bbox[3];
+  };
+  return bbox;
+}
+
+
+/**
+ * Returns an outer bounding box for a given array of inner bounding boxes
+ * @param {Array<number>} arrayOfBboxes
+ */
+function outerBoundingBox(arrayOfBboxes) {
+  let outerBbox = [ 180, 90, -180, -90 ];
+  arrayOfBboxes.forEach( (x) => {
+    outerBbox[0] = x[0] < outerBbox[0] ? x[0] : outerBbox[0];
+    outerBbox[1] = x[1] < outerBbox[1] ? x[1] : outerBbox[1];
+    outerBbox[2] = x[2] > outerBbox[2] ? x[2] : outerBbox[2];
+    outerBbox[3] = x[3] > outerBbox[3] ? x[3] : outerBbox[3];
+  });
+  return outerBbox;
+}
+
+
+/**
+ * Calculates distance in metres covered by path
+ * @param {Array<number>} lngLats array containing [lng, lat] coordinates
+ */
+function pathDistance(lngLats) {
+
+  let distance = 0;
+  let lastPoint, thisPoint;
+
+  for (let i = 0, n = lngLats.length; i < n; i++) {
+    thisPoint = new Point([lngLats[i]]);
+    if (i > 0) distance += p2p(thisPoint, lastPoint);
+    lastPoint = thisPoint;
+  }
+
+  return distance;
+}
+
+/**
+ * Objectifies a point to ensure correct format for library methods
+ * @param {Array<number>} array
+ */
+class Point {
+
+  constructor(array) {
+    this.lng = array[0][0];
+    this.lat = array[0][1];
+    if ( typeof array[1] !== 'undefined' ) this.elev = array[1];
+    if ( typeof array[2] !== 'undefined' ) this.time = array[2];
+    if ( typeof array[3] !== 'undefined' ) this.hr = array[3];
+    if ( typeof array[4] !== 'undefined' ) this.cad = array[4];
+  }
+
+}
+
 module.exports = {
   p2p,
   p2l,
-  bearing
+  bearing,
+  outerBoundingBox,
+  pathDistance,
+  boundingBox,
+  Point
 };

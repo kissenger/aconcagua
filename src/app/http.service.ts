@@ -1,4 +1,4 @@
-import { EventEmitter, Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 @Injectable()
@@ -17,21 +17,34 @@ export class HttpService {
   private saveCreatedRouteUrl = 'http://localhost:3000/save-created-route/';
   private exportPathUrl = 'http://localhost:3000/export-path/';
   private movePathUrl = 'http://localhost:3000/move-path/';
-  private getDownloadUrl = 'http://localhost:3000/download/';
+  // private getDownloadUrl = 'http://localhost:3000/download/';
+  private findMatchingPathsUrl = 'http://localhost:3000/download/';
+  private getOpenStreetMapDataUrl = 'http://localhost:3000/get-osm-data/';
 
   constructor( private http: HttpClient ) {}
+
+  getOpenStreetMapData(boundingBox: Array<number>) {
+    console.log(boundingBox);
+    return this.http.post<any>(this.getOpenStreetMapDataUrl, boundingBox);
+  }
+
+  /**
+   * Not in use
+   * @param pathSegment path segment to match against routes
+   */
+  findMatchingPaths(pathSegment: Array<number>) {
+    return this.http.post<any>(this.findMatchingPathsUrl, pathSegment);
+  }
 
   movePath(id: String, from: String, to: String) {
     return this.http.get<any>(this.movePathUrl + id + '/' + from + '/' + to);
   }
 
-  getDownload() {
-    console.log('getDOwnload');
-    return this.http.get<any>(this.getDownloadUrl);
-  }
+  // getDownload() {
+  //   return this.http.get<any>(this.getDownloadUrl);
+  // }
 
   exportPath(type, id) {
-    console.log(this.exportPathUrl);
     return this.http.get<any>(this.exportPathUrl + type + '/' + id);
   }
 
@@ -51,8 +64,8 @@ export class HttpService {
     return this.http.get<any>(this.getMatchedTracksUrl + routeId);
   }
 
-  getPathById(type: String, id: String, returnIdOnly: Boolean) {
-    return this.http.get<any>(this.getPathByIdUrl + type + '/' + id + '/' + returnIdOnly);
+  getPathById(type: String, id: String) {
+    return this.http.get<any>(this.getPathByIdUrl + type + '/' + id );
   }
 
   matchFromDb(id: String) {
