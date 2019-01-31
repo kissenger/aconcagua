@@ -31,14 +31,17 @@ class GeoJson{
       bboxArray.push(document.stats.bbox);
     })
 
+    let stats = plotType ? mongoMatchDoc.stats : mongoPathDocs[0].stats;
+
     return {
       type: 'FeatureCollection',
       plotType: plotType ? plotType : 'route',
-      stats: plotType ? mongoMatchDoc.stats : {},
+      // stats: 
       bbox: outerBoundingBox(bboxArray),
       features: features,
       properties: {
-        pathId: mongoPathDocs[0] ? mongoPathDocs[0]._id : null
+        pathId: mongoPathDocs[0] ? mongoPathDocs[0]._id : null,
+        ...stats
       }
     }
 
@@ -48,8 +51,8 @@ class GeoJson{
 
 
 /**
- *
- * @param {*} doc
+ * Extracts key properties from path document 
+ * @param {Mongo Document} doc mongo path document
  */
 function getPathProps(doc) {
   return {
@@ -63,9 +66,10 @@ function getPathProps(doc) {
 }
 
 /**
- *
- * @param {*} lngLats
- * @param {*} nmatch
+ * returns an array of features coloured by whether mtached or not
+ * @param {[number]} lngLats array of points a lngLat coordinates
+ * @param {[number]} nmatch array of nmatch data from Mongo match db
+ * @param {[GeoJsonFeature]} returns arrat of geojsonfeature class instances
  */
 function getBinaryFeatures(lngLats, nmatch) {
 
@@ -95,10 +99,10 @@ function getBinaryFeatures(lngLats, nmatch) {
 class GeoJsonFeature {
 
   /**
-   *
-   * @param {*} lngLats
-   * @param {*} colour
-   * @param {*} properties
+   * Class containing a single GeoJson segment
+   * @param {[number]} lngLats array of points a lngLat coordinates
+   * @param {string} colour desired colour of line
+   * @param {object} properties properties to add to segment
    */
   constructor (lngLats, colour, properties) {
 

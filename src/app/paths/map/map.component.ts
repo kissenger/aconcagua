@@ -104,9 +104,9 @@ export class MapComponent implements OnInit, OnDestroy {
       this.pathType = params.pathType;
       this.pageType = getPageType(this.pathId, params.pageType);
 
-      console.log(this.pathId);
-      console.log(this.pathType);
-      console.log(this.pageType);
+      // console.log(this.pathId);
+      // console.log(this.pathType);
+      // console.log(this.pageType);
 
       // get definition of controls for this page
       this.isMenuSticky = this.controls.getMenuButtons(this.pageType, this.pathType).isSticky;
@@ -118,8 +118,6 @@ export class MapComponent implements OnInit, OnDestroy {
       } else {
         this.showPlotOptions = true;
       }
-
-      // console.log(this.radioItems, this.checkboxItems);
 
       // now we know page type, get data and call loadMap()
       if ( this.pageType === 'review') {
@@ -136,7 +134,6 @@ export class MapComponent implements OnInit, OnDestroy {
           this.httpService.getPathById(this.pathType, this.pathId).subscribe( (result) => {
             console.log(result);
             this.path = result.geoJson;
-            console.log(this.path);
 
             if ( this.pathType === 'challenge' ) {
               console.log(result);
@@ -147,9 +144,9 @@ export class MapComponent implements OnInit, OnDestroy {
               });
 
               // **NEED TO DETECT IF THIS IS A NEWLY UPLOADED CHALLENGE, IF SO DONT LOAD TRACKS (YET)
-              this.httpService.getMatchedTracks(this.pathId).subscribe( (res) => {
-
-                this.tracks = res['geoTracks'];
+              this.httpService.getMatchedTracks(this.pathId).subscribe( (tracks) => {
+console.log(tracks);
+                this.tracks = tracks.tracks;
                 // console.log(this.tracks);
 
                 // use timer to repeatedly attempt to trun checkbox active, until succesful
@@ -236,8 +233,8 @@ export class MapComponent implements OnInit, OnDestroy {
 
       // TODO - DATA FLOWS NEED REVIEWING - THIS CAN BE IMPROVED
       const emitData = {
-        path: this.path.features[0].properties,
-        match: this.binary ? this.binary.stats : 0
+        path: this.path.properties,
+        match: this.binary ? this.binary.properties : 0
       };
       this.dataService.fromMapToData.emit(emitData);
       this.dataService.storeData(emitData);

@@ -490,14 +490,8 @@ app.get('/get-path-by-id/:type/:id', auth.verifyToken, (req, res) => {
   getPathFromId(req.params.id, req.params.type).then( path => {
 
 
-    temp = new GeoJson(path);
-    console.log(temp.stats);
-
 
     if (req.params.type === 'challenge') {
-
-
-
 
       getMatchFromDb(path).then( plotOptions => {
 
@@ -650,9 +644,12 @@ function getMatchFromImportRoute(userId, challengeId) {
 
         const match =  new NewMatch(challenge, tracks);
         console.log('===========');
-        console.log(match);
         MongoMatch.Match.create(match).then( () => {
-          console.log(match);
+          console.log(match.params.trksList);
+          console.log(match.params.nmatch);
+          console.log(match.params.tmatch);
+          console.log(match.params.dmatch);
+
           resolve(match);
         });
       });
@@ -802,6 +799,7 @@ app.get('/get-matched-tracks/:challengeId', auth.verifyToken, (req, res) => {
   }
 
   getMatchingTracksFromMatchObj(req.params.challengeId).then( (tracks) => {
+    console.log('> get-matched-tracks: matched ' + tracks.length + ' tracks');
     if (!tracks) {
       res.status(201).json({result: 'no matched tracks'})
     } else {

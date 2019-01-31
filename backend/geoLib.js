@@ -149,6 +149,21 @@ function pathDistance(lngLats) {
   return distance;
 }
 
+
+/**
+ * Determines if point lies within bounding box
+ * @param {Array<number>} bbox bounding box as [minLng, minLat, maxLng, maxLat]
+ * @param {Array<number>} point point as lngLat coordinate pair
+ * @returns {boolean} true if point is in box, false otherwise
+ */
+function isPointInBBox(point, bbox) {
+  return  point[0] < bbox[2] &&  /* lng is less than maxLng */
+          point[0] > bbox[0] &&  /* lng is greater than minLng */
+          point[1] < bbox[3] &&  /* lat is less than maxLat */
+          point[1] > bbox[1];    /* lat is greater than minLat */
+}
+
+
 /**
  * Objectifies a point to ensure correct format for library methods
  * @param {Array<number>} array
@@ -173,5 +188,6 @@ module.exports = {
   outerBoundingBox,
   pathDistance,
   boundingBox,
-  Point
+  Point,
+  isPointInBBox
 };
