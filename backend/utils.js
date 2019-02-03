@@ -1,42 +1,23 @@
-function getRandomColour(i) {
 
-  const colorsArr = ['red', 'orange', 'blue', 'purple', 'green',  'brown', 'grey-blue'];
 
-  if ( i > colorsArr.length ) {
-    const letters = '456789ABCDEF';
-    var color = '#';
-    for (var j = 0; j < 6; j++) {
-      color += letters[Math.floor(Math.random() * letters.length)];
-    }
-  } else {
-    color = colorsArr[i];
+
+/**
+ * Returns a colour selected at random, in hex rgb format
+ */
+function getRandomColour() {
+  const letters = '456789ABCDEF';
+  var colour = '#';
+  for (var j = 0; j < 6; j++) {
+    colour += letters[Math.floor(Math.random() * letters.length)];
   }
-
-  return color;
+  return colour;
 }
 
-// function wrapGeoJson(arrayOfGeoJsons) {
-
-//   let minLat = 180, maxLat = -180, minLng = 180, maxLng = -180;
-
-//   arrayOfGeoJsons.forEach( (geoJson, i) => {
-//     minLat = geoJson.bbox[1] < minLat ? geoJson.bbox[1] : minLat;
-//     minLng = geoJson.bbox[0] < minLng ? geoJson.bbox[0] : minLng;
-//     maxLat = geoJson.bbox[3] > maxLat ? geoJson.bbox[3] : maxLat;
-//     maxLng = geoJson.bbox[2] > maxLng ? geoJson.bbox[2] : maxLng;
-//     geoJson.properties.color = getRandomColour(i);
-//     geoJson.properties.name = geoJson.name;
-//   })
-
-//   return {
-//     "type": "FeatureCollection",
-//     "bbox": [minLng, minLat, maxLng, maxLat],
-//     "features": arrayOfGeoJsons.map(x => x)
-//   }
-
-// };
-
-function contourPalette(nLevels) {
+/**
+ *
+ * @param {*} nLevels
+ */
+function getContourPalette(nLevels) {
 
   const highColour = '0000FF'; //blue
   const lowColour = 'FFFFFF';
@@ -131,6 +112,6 @@ function padInt(num, size) {
 module.exports = {
   getRGB,
   padInt,
-  contourPalette,
+  getContourPalette,
   getRandomColour
 };

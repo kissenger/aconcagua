@@ -10,7 +10,7 @@ MATCH_TOLERANCE = 20;  // in metres
 
 /**
  * PathFromCoords class
- * Objectifies LngLat array 
+ * Objectifies LngLat array
  */
 class PathFromCoords {
 
@@ -36,7 +36,7 @@ class PathFromCoords {
  * PathFromDocument class
  * Objectifies lngLat array extracted from provided mongo Path document
  * Invokes the PathFromCoords class
- */ 
+ */
 class PathFromDocument extends PathFromCoords {
 
   /**
@@ -75,11 +75,9 @@ class Match {
       this.bbox = rte.stats.bbox,
       this.route = rte.geometry.coordinates.map(x => new PathFromCoords(x));
     }
-    console.log('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');
-    // console.log(matchObject);
     this.params = matchObject.params;
     if (!this.stats) this.stats = matchObject.stats;
-    
+
   } // constructor
 
 
@@ -205,10 +203,15 @@ class Match {
    */
   analyseMatch() {
     for (let itrk = 0, n = this.tracks.length; itrk < n; itrk++) {
+      process.stdout.write(".");
+      if (itrk === n-1) process.stdout.write("\r");
+      const trackFudgedBBox = this.boundingBoxFudger(this.tracks[itrk].bbox);
+
       for (let irseg = 0, n = this.route.length; irseg < n; irseg++) {
         for (let irp = 0, n = this.route[irseg].lngLat.length; irp < n; irp++) {
+          //console.log(this.route[irseg].getPoint(irp), trackFudgedBBox);
 
-          if (isPointInBBox(this.route[irseg].getPoint(irp), this.boundingBoxFudger(this.tracks[itrk].bbox))) {
+          if (isPointInBBox(this.route[irseg].getPoint(irp), trackFudgedBBox)) {
             this.compareTrackAgainstPoint(itrk, irseg, irp);
           };
 
@@ -229,30 +232,25 @@ class Match {
    */
   compareTrackAgainstPoint(it, is, irp) {
 
-    const routePoint = this.route.getPoint(irp);
+    const routePoint = this.route[is].getPoint(irp);
 
     // loop through each track point and finf distance to supplied route point
     // if less than threshold, save the match data
-    console.log('$$$$$$$$$$$$$$$$$$$$$$$$$$');
-    console.log(this.tracks);
-    console.log(this.tracks[it]);
-    console.log(this.tracks[it].length);
+    //console.log('$$$$$$$$$$$$$$$$$$$$$$$$$$');
+    //console.log(this.tracks[0]);
+    //console.log(this.tracks[it]);
+    // console.log(this.tracks[it].length);
 
     for (let itp = 0, n = this.tracks[it].lngLat.length; itp < n; itp++) {
 
-      const trackPoint = this.track[it].getPoint(itp);
+      const trackPoint = this.tracks[it].getPoint(itp);
       const d = Math.round(p2p(routePoint, trackPoint) * 100) / 100;
-      console.log('######################');
 
       if ( d < MATCH_TOLERANCE ) {
-        console.log('----------------');
-        console.log(d);
-        console.log(trkId);
-        const trkId = this.tracks[it].id;
-        console.log(this.params.tmatch);
-        // console.log(this.params.tmatch[is]);
 
+        const trkId = this.tracks[it].id;
         const i = this.params.tmatch[is][irp].indexOf(trkId);
+
         if ( i === -1 ) {
           // if track is not found on current point, push it to array
           this.params.nmatch[is][irp]++;
@@ -261,8 +259,7 @@ class Match {
 
         } else {
           // if track is found on current point, update distance in array
-          this.params.dmatch[is][irp] = d < this.params.dmatch[is][irp] ? d : this.params.dmatch[is][irp];
-        }
+          if (d < this.params.dmatch[is][irp]) this.params.dmatch[is][irp][i] = d;        }
 
         // if track is not found in overall tracks list, push it
         if ( this.params.trksList.indexOf(trkId) === -1 ) {
@@ -275,7 +272,7 @@ class Match {
   }
 
   /**
-   * Enlargens a bounding box by an arbitrary factor
+   * Expands a bounding box by an arbitrary factor
    * @param {Array<number>} bbox bounding box as [minLng, minLat, maxLng, maxLat]
    * @returns bbox bounding box as [minLng, minLat, maxLng, maxLat]
    */

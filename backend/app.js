@@ -126,7 +126,7 @@ app.post('/get-osm-data/', auth.verifyToken, (req, res) => {
       const temp = parseOSM(body, boundingBox);
       pathCloud = new PathCloud(temp, userId);
       MongoChallenges.Challenges.create(pathCloud.getMongoObject()).then(documents => {
-        res.status(201).json({geoJson: new GeoJson(documents)});
+        res.status(201).json({geoJson: new GeoJson(documents, 'route')});
       });
 
 
@@ -180,7 +180,7 @@ app.post('/import-tracks/:singleOrBatch', auth.verifyToken, upload.array('filena
     MongoPath.Tracks
       .create(paths.map(p => p.mongoFormat(userId, false)))
       .then( (documents) => {
-        res.status(201).json({geoJson: new GeoJson(documents)});
+        res.status(201).json({geoJson: new GeoJson(documents, 'route')});
       })
   }
 
@@ -208,7 +208,7 @@ app.post('/import-route/', auth.verifyToken, upload.single('filename'), (req, re
 
   // Save route into database
   MongoPath.Routes.create(path).then( documents => {
-    res.status(201).json({geoJson: new GeoJson(documents)});
+    res.status(201).json({geoJson: new GeoJson(documents, 'route')});
   })
 
 
@@ -358,8 +358,11 @@ app.post('/save-path/:type/:id',  auth.verifyToken, (req, res) => {
         matchNewTrack(req.params.id);
 
       } else if ( req.params.type === 'challenge' ) {
-        getMatchFromImportRoute(req.userId, req.params.id).then( () => {
-          notify(req.userId, req.params.id, 'route', 'New Challenge', 'Analysis of new challenge route complete');
+        newMatchFromChallengeId(req.params.id).then( (newMatch) => {
+          mongoModel('match').create(newMatch).then( () => {
+            //TODO noftify not working
+            notify(req.userId, req.params.id, 'route', 'New Challenge', 'Analysis of new challenge route complete');
+          });
         });
 
       } // if
@@ -407,7 +410,7 @@ app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
    *  stats
    *  name
    *  */
-
+  console.log('>> get-paths-list');
   const LIMIT = 50 //number of items to return in one query
 
   // ensure user is authorised
@@ -434,9 +437,10 @@ app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
     mongoModel(req.params.type)
       .find(condition, filter).sort(sort).limit(LIMIT).skip(LIMIT*(req.params.offset))
       .then(documents => {
-        res.status(201).json(new ListData(documents, count)) });
-    })
+        res.status(201).json(new ListData(documents, count))
+      });
   })
+})
 
 
 // /*****************************************************************
@@ -487,20 +491,18 @@ app.get('/get-path-by-id/:type/:id', auth.verifyToken, (req, res) => {
   }
 
   // query the database and return result to front end
-  getPathFromId(req.params.id, req.params.type).then( path => {
-
-
+  getPathDocFromId(req.params.id, req.params.type).then( path => {
 
     if (req.params.type === 'challenge') {
 
       getMatchFromDb(path).then( plotOptions => {
 
         // console.log(1, req.params.id, plotOptions);
-        res.status(201).json({geoJson: new GeoJson(path), ...plotOptions});
+        res.status(201).json({geoJson: new GeoJson(path, 'route'), ...plotOptions});
       });
     } else {
       // console.log(2);
-      res.status(201).json({geoJson: new GeoJson(path)});
+      res.status(201).json({geoJson: new GeoJson(path, 'route')});
     }
   })
 })
@@ -606,6 +608,33 @@ app.get('/download', (req, res) => {
   } );
 
 })
+
+
+
+/*****************************************************************
+ *
+ *  Return all the tracks associated with a challenge
+ *
+ *****************************************************************/
+app.get('/get-matched-tracks/:challengeId', auth.verifyToken, (req, res) => {
+
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  getMatchingTracksFromMatchObj(req.params.challengeId).then( (tracks) => {
+    console.log('> get-matched-tracks: matched ' + tracks.length + ' tracks');
+    if (!tracks) {
+      res.status(201).json({result: 'no matched tracks'})
+    } else {
+      res.status(201).json({geoTracks: geoJson = new GeoJson(tracks, 'tracks')})
+    }
+  })
+
+})
+
+
 /*****************************************************************
  *
  *  Flush database of all unsaved entries
@@ -624,34 +653,25 @@ app.get('/flush', (req, res) => {
 })
 
 
-//*****************************************************************
+/*****************************************************************
+ *
+ *  Local functions
+ *
+ *****************************************************************/
 
 /**
- * Perform route matching on newly uploaded challenge path
- * @param {string} userId id of the user ** NOT CURRENTLY USED **
+ * Perform route matching on a supplied challenge id
  * @param {string} challengeId is of the challenge
  * @param {object} returns match object
  */
-function getMatchFromImportRoute(userId, challengeId) {
+function newMatchFromChallengeId(challengeId) {
 
   console.log('> getMatchFromImportRoute');
   return new Promise( resolve => {
-
-    console.log('getMatchFromImportRoute');
-    getPathFromId(challengeId, 'challenge').then( (challenge) => {
-      getMatchingPathsFromBbox(challengeId, 'challenge', 'track').then( (tracks) =>{
-        // console.log(challenge);
-
-        const match =  new NewMatch(challenge, tracks);
-        console.log('===========');
-        MongoMatch.Match.create(match).then( () => {
-          console.log(match.params.trksList);
-          console.log(match.params.nmatch);
-          console.log(match.params.tmatch);
-          console.log(match.params.dmatch);
-
-          resolve(match);
-        });
+    getPathDocFromId(challengeId, 'challenge').then( (challenge) => {
+      getPathsMatchingPathId(challengeId, 'challenge', 'track').then( (tracks) =>{
+        console.log('9');
+        resolve(new NewMatch(challenge, tracks));  // invoking a new match runs the match algorithm
       });
     })
 
@@ -659,30 +679,70 @@ function getMatchFromImportRoute(userId, challengeId) {
 }
 
 
+/**
+ * get a mongo db entry from a provided path id
+ * @param {string} pid path id
+ * @param {string} ptype path type
+ */
+function getPathDocFromId(pid, ptype, getMatchData) {
+  return new Promise( resolve => {
+    mongoModel(ptype).find({_id: pid}).then( (path) => {
+      resolve(path[0]);
+    })
+  })
+}
 
 
-/*****************************************************************
+/**
+ * Get all the tracks that match to provided pathId (can be route or challenge)
  *
- *  Retrieve route matching data from previously matched route
- *
- *****************************************************************/
+ * @param {string} pathId id the the path to match
+ * @param {string} pathTypeToMatch type of path to match paths against
+ * @param {string} pathTypeToSearch type of path to search for
+ * @param {promise} returns a promise containing array of track objects
+ */
+function getPathsMatchingPathId(pathId, pathTypeToMatch, pathTypeToSearch) {
 
- /**
-  * Retrieve match data from a provided challenge Id
-  * @param {object} challenge mongo challenge object **not just Id its the whole shebang
-  * @param {object} returns object containing plot contour and plot binary data
-  */
+  console.log('> getPathsMatchingPathId');
+  return new Promise( resolve => {
+
+    mongoModel(pathTypeToMatch).find( {'_id': pathId} ).then( (pathToMatch) => {
+      mongoModel(pathTypeToSearch).find({
+        geometry: {
+          $geoIntersects: {
+            $geometry: {
+              'type': 'Polygon',
+              'coordinates': bbox2Polygon(pathToMatch[0].stats.bbox)
+            }
+          }
+        }
+      }).then( (matchedTracks) => {
+
+        console.log('> getPathsMatchingPathId: Matched ' + matchedTracks.length + ' tracks');
+        resolve(matchedTracks);
+
+      })
+
+    }) // mongoModel
+  }) // promise
+}
+
+
+/**
+* Retrieve match data from a provided challenge Id
+* @param {object} challenge mongo challenge object **not just Id its the whole shebang
+* @param {object} returns object containing plot contour and plot binary data
+*/
 function getMatchFromDb(challenge) {
 
+  console.log('> getMatchFromDb');
   return new Promise( resolve => {
-    console.log(challenge._id);
-    console.log(challenge);
     MongoMatch.Match.find({challengeId: challenge._id}).then( (match) => {
 
       if ( match.length === 0 ) resolve();
       else {
         resolve({
-          // 'geoContour': new GeoJson(challenge, 'contour', match[0]),
+          'geoContour': new GeoJson(challenge, 'contour', match[0]),
           'geoBinary': new GeoJson(challenge, 'binary', match[0])
         });
       }
@@ -692,13 +752,12 @@ function getMatchFromDb(challenge) {
 }
 
 
-/*****************************************************************
+/**
  *
- *  Deal with match data on deletion of track or route
- *
- ****************************************************************/
-
- function matchDelete(pathId, pathType) {
+ * @param {*} pathId
+ * @param {*} pathType
+ */
+function matchDelete(pathId, pathType) {
 
   if ( pathType === 'route' ) {
     // if this is a route, then simply delete all match data for this route id
@@ -735,23 +794,20 @@ function getMatchFromDb(challenge) {
 }
 
 
-/*****************************************************************
+/**
  *
- *  Perform route matching on newly uploaded track
- *
- *****************************************************************/
-
- function matchNewTrack(trkId) {
+ * @param {*} trkId
+ */
+function matchNewTrack(trkId) {
 
   return new Promise( resolve => {
 
     // find the target track from db
     console.log('> matchNewTrack');
-    console.log('matchNewTrack');
-    getPathFromId(trkId, 'track').then( (track) => {
+    getPathDocFromId(trkId, 'track').then( (track) => {
 
       if (track.length === 0) resolve(0);
-      getMatchingPathsFromBbox(trkId, 'track', 'route').then( (routes) => {
+      getPathsMatchingPathId(trkId, 'track', 'route').then( (routes) => {
 
         if ( routes.length === 0 ) resolve(true);
         routes.forEach( (route) => {
@@ -786,70 +842,6 @@ function getMatchFromDb(challenge) {
 }
 
 
-/*****************************************************************
- *
- *  Return all the tracks associated with a challenge
- *
- *****************************************************************/
-app.get('/get-matched-tracks/:challengeId', auth.verifyToken, (req, res) => {
-
-  const userId = req.userId;
-  if ( !userId ) {
-    res.status(401).send('Unauthorised');
-  }
-
-  getMatchingTracksFromMatchObj(req.params.challengeId).then( (tracks) => {
-    console.log('> get-matched-tracks: matched ' + tracks.length + ' tracks');
-    if (!tracks) {
-      res.status(201).json({result: 'no matched tracks'})
-    } else {
-      res.status(201).json({geoTracks: geoJson = new GeoJson(tracks)})
-    }
-  })
-
-})
-
-
-/*****************************************************************
- *
- *  Utility functions for abstraction
- *  These are internal functions not exported
- *
- *****************************************************************/
-
-/**
- * Get all the tracks that match to provided pathId (can be route or challenge)
- * @param {string} pathId id the the path to match
- * @param {string} pathTypeBasis type of path to match paths against
- * @param {string} pathTypeSearch type of path to search for
- * @param {promise} returns a promise containing array of track objects
- */
-function getMatchingPathsFromBbox(pathId, pathTypeBasis, pathTypeSearch) {
-
-  console.log('> getMatchingTracks');
-  return new Promise( resolve => {
-
-    mongoModel(pathTypeBasis).find( {'_id': pathId} ).then( (pathToMatch) => {
-      mongoModel(pathTypeSearch).find({
-        geometry: {
-          $geoIntersects: {
-            $geometry: {
-              'type': 'Polygon',
-              'coordinates': bbox2Polygon(pathToMatch[0].stats.bbox)
-            }
-          }
-        }
-      }).then( (matchedTracks) => {
-
-        console.log('> getMatchingTracks: Matched ' + matchedTracks.length + ' tracks');
-        resolve(matchedTracks);
-
-      })
-
-    }) // mongoModel
-  }) // promise
-}
-
 
 /**
  * Get all the tracks that match a route from an existing match object
@@ -879,29 +871,17 @@ function getMatchingTracksFromMatchObj(cId) {
 }
 
 
-/**
- * get a mongo db entry from a provided path id
- * @param {string} pid path id
- * @param {string} ptype path type
- */
-function getPathFromId(pid, ptype, getMatchData) {
-  return new Promise( resolve => {
-    mongoModel(ptype).find({_id: pid}).then( (path) => {
-      resolve(path[0]);
-    })
-  })
-}
-
 
 /**
  * Returns the model definition for a given path type
- * @param {string} pathType
+ * @param {string} pathType 'challenge', 'route', 'track' or 'match'
  */
 function mongoModel(pathType) {
   switch(pathType) {
     case 'challenge': return MongoChallenges.Challenges;
     case 'route': return MongoPath.Routes;
     case 'track': return MongoPath.Tracks;
+    case 'match': return MongoMatch.Match;
   }
 }
 
@@ -910,7 +890,6 @@ function mongoModel(pathType) {
  * Converts standard bounding box to polygon for mongo geometry query
  * @param {number} bbox bounding box as [minlng, minlat, maxlng, maxlat]
  */
-
 function bbox2Polygon(bbox) {
   return [[
     [ bbox[0], bbox[1] ],

@@ -115,8 +115,8 @@ getMapOptions(pageType) {
     return options;
   }
 
-  getMapLineStyles() {
-    return this.mapLineStyles;
+  getMapLineStyles(featureType: string) {
+    return this.mapLineStyles[featureType];
   }
 
   getMenuBtns() {

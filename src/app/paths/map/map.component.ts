@@ -18,6 +18,7 @@ import { Services } from '@angular/core/src/view';
 import { Observable } from 'rxjs';
 import { markParentViewsForCheck } from '@angular/core/src/view/util';
 import { map } from 'rxjs/operators';
+import { registerModuleFactory } from '@angular/core/src/linker/ng_module_factory_loader';
 
 @Component({
   selector: 'app-map',
@@ -61,6 +62,7 @@ export class MapComponent implements OnInit, OnDestroy {
   private binary;                  // binary plot data
   private tracks;                  // all matched tracks
   private contour;                 // contour plot data
+  private trackFeatures;
 
   // used in route create mode
   private markers = [];
@@ -131,36 +133,41 @@ export class MapComponent implements OnInit, OnDestroy {
       } else if ( this.pageType === 'normal' || this.pageType === 'create') {
 
         if (this.pathId) {   // required to prevent trying to recall a non-existant path when no id in url
-          this.httpService.getPathById(this.pathType, this.pathId).subscribe( (result) => {
-            console.log(result);
-            this.path = result.geoJson;
 
-            if ( this.pathType === 'challenge' ) {
-              console.log(result);
-              this.binary = result.geoBinary;
-              this.contour = result.geoContour;
-              this.feedService = this.dataService.newNotification.subscribe( (data) => {
-                // notification
-              });
-
-              // **NEED TO DETECT IF THIS IS A NEWLY UPLOADED CHALLENGE, IF SO DONT LOAD TRACKS (YET)
-              this.httpService.getMatchedTracks(this.pathId).subscribe( (tracks) => {
-console.log(tracks);
-                this.tracks = tracks.tracks;
-                // console.log(this.tracks);
-
-                // use timer to repeatedly attempt to trun checkbox active, until succesful
-                // this.subsActive = false;
-                // this.timer = setInterval( () => {
-                //   this.setInputEnabled(<HTMLElement>document.getElementById('Tracks'));
-                // }, 200);
-
-              });
-
-            } // if challenge page
-
+          if (this.pathId === '0') {
             this.loadMap();
-          }); // httpService subscription
+          } else {
+            this.httpService.getPathById(this.pathType, this.pathId).subscribe( (result) => {
+              console.log(result);
+              this.path = result.geoJson;
+
+              if ( this.pathType === 'challenge' ) {
+                console.log(result);
+                this.binary = result.geoBinary;
+                this.contour = result.geoContour;
+                this.feedService = this.dataService.newNotification.subscribe( (data) => {
+                  // notification
+                });
+
+                // **NEED TO DETECT IF THIS IS A NEWLY UPLOADED CHALLENGE, IF SO DONT LOAD TRACKS (YET)
+                this.httpService.getMatchedTracks(this.pathId).subscribe( (tracks) => {
+  console.log(tracks);
+                  this.tracks = tracks.geoTracks;
+                  // console.log(this.tracks);
+
+                  // use timer to repeatedly attempt to trun checkbox active, until succesful
+                  // this.subsActive = false;
+                  // this.timer = setInterval( () => {
+                  //   this.setInputEnabled(<HTMLElement>document.getElementById('Tracks'));
+                  // }, 200);
+
+                });
+
+              } // if challenge page
+
+              this.loadMap();
+            }); // httpService subscription
+          }
         }
         // this.loadMap();
         document.documentElement.style.cursor = 'default';
@@ -193,43 +200,23 @@ console.log(tracks);
     this.map = new google.maps.Map(document.getElementById('map'), this.initData.getMapOptions(this.pageType));
 
     if ( this.pathId === '0' ) {
-    // path id is not known
-      this.map.fitBounds({
-        north: 90,
-        south: -90,
-        east:  180,
-        west:  -180
-      });
+      this.setMapBoundary();
 
     } else {
 
-      this.path.features.forEach((x, i) => x['id'] = 'route-' + i);
+      // add set and set boundary
       this.map.data.addGeoJson(this.path);
-      this.map.fitBounds({
-        north: this.path.bbox[3],
-        south: this.path.bbox[1],
-        east: this.path.bbox[2],
-        west: this.path.bbox[0]
-      });
+      this.setMapBoundary(this.path.bbox);
 
-      // set style of plotted paths
-      // think about doing this in a more readble manner, even if it take more lines.
-      const lineStyles = this.initData.getMapLineStyles();
+      // set the proprties of the path, depending on what type of path is active
+      // iterates through each feature in featurecollection
       this.map.data.setStyle( (feature) => {
-        const featureId = String(feature.getId());
-        const featureType = featureId.substring(0, featureId.indexOf('-'));
-        lineStyles[featureType]['strokeColor'] = feature.getProperty('color');
-        if ( this.pageType === 'create' ) {
-          lineStyles[featureType]['strokeOpacity'] = 0.5;
-        } else {
-          // THIS SHOULD NOT BE NEEDED, but somehow opacity=0.5 is persistant even with return call to getMapLineStyles
-          // needs debugging
-          lineStyles[featureType]['strokeOpacity'] = 1.0;
-        }
-        return lineStyles[featureType];
+        const featureType = feature.getProperty('plotType');
+        const featureStyle = this.initData.getMapLineStyles(featureType);
+        featureStyle.strokeColor = feature.getProperty('color');
+        featureStyle.strokeOpacity = this.pageType === 'create' ? 0.5 : featureStyle.strokeOpacity;
+        return featureStyle;
       });
-
-
 
       // TODO - DATA FLOWS NEED REVIEWING - THIS CAN BE IMPROVED
       const emitData = {
@@ -269,8 +256,21 @@ console.log(tracks);
         } );
       }
     }
-
   } // loadMap()
+
+  /**
+   * sets the fitBounds property on the current map
+   * @param boundingBox OPTIONAL bounding box as [minlng, minlat, maxlng, maxlat]
+   * if not provided, will default to world view
+   */
+  private setMapBoundary(boundingBox = [-180, -90, 180, 90]) {
+    this.map.fitBounds({
+      north: boundingBox[3],
+      south: boundingBox[1],
+      east: boundingBox[2],
+      west: boundingBox[0]
+    });
+  }
 
   /**
    * extends path to new destination, including snap to road if requested
@@ -280,7 +280,7 @@ console.log(tracks);
    * side-effects:
    *   updates this.elev on the component class
    */
-  addToPath(path: google.maps.MVCArray<google.maps.LatLng>, dest: google.maps.LatLng) {
+  private addToPath(path: google.maps.MVCArray<google.maps.LatLng>, dest: google.maps.LatLng) {
 
     return new Promise<google.maps.MVCArray<google.maps.LatLng>>( (res, rej) => {
 
@@ -316,7 +316,7 @@ console.log(tracks);
    * @param path array of google.maps.latlng instances
    * @returns array of elevations at provided points
    */
-  getElevation(path: Array<google.maps.LatLng>) {
+  private getElevation(path: Array<google.maps.LatLng>) {
 
     return new Promise<Array<Number>>( (res, rej) => {
 
@@ -339,7 +339,7 @@ console.log(tracks);
   /**
    * clear created path from map and reset all variables
    */
-  clearPath() {
+  private clearPath() {
     const path = this.polyLine.getPath();
     path.clear();
     this.markers.forEach(x => x.setMap(null));
@@ -356,7 +356,7 @@ console.log(tracks);
   * number of points to pop from path, meaning seperate record of points
   * added is not needed.
   */
-  undoLast() {
+  private undoLast() {
 
     const path = this.polyLine.getPath();
     const undoLength = this.elevArray[this.elevArray.length - 1].length;
@@ -386,7 +386,7 @@ console.log(tracks);
   /**
   * Auto fill final segment back to start of path
   */
-  closePath() {
+  private closePath() {
 
     const path = this.polyLine.getPath();
     const destination = path.getAt(0);
@@ -405,19 +405,19 @@ console.log(tracks);
  *
  */
 
-  loadSinglePath()       { document.getElementById('file-select-single').click(); }
-  loadMultiplePaths()    { document.getElementById('file-select-multiple').click(); }
+  private loadSinglePath()       { document.getElementById('file-select-single').click(); }
+  private loadMultiplePaths()    { document.getElementById('file-select-multiple').click(); }
   // addToChallenges()      { this.controlFunctions.addToChallenges(this.pathId); }
-  deletePath()           { this.controlFunctions.deletePath(this.pathType, this.pathId);   }
-  createNewPath()        { this.controlFunctions.createNewPath(this.pathType, this.pathId);   }
-  saveCreatedPath()      { this.controlFunctions.saveCreatedPath(this.pathType, this.polyLine.getPath());   }
-  exportPathToFile()     {
+  private deletePath()           { this.controlFunctions.deletePath(this.pathType, this.pathId);   }
+  private createNewPath()        { this.controlFunctions.createNewPath(this.pathType, this.pathId);   }
+  private saveCreatedPath()      { this.controlFunctions.saveCreatedPath(this.pathType, this.polyLine.getPath());   }
+  private exportPathToFile()     {
     this.httpService.exportPath(this.pathType, this.pathId).subscribe( (r) => {
       window.location.href = 'http://localhost:3000/download';
     });
   }
-  discardCreatedPath()   { this.controlFunctions.discardCreatedPath(this.pathType);    }
-  discardImportedPath()  { this.controlFunctions.discardImportedPath(this.pathType);  }
+  private discardCreatedPath()   { this.controlFunctions.discardCreatedPath(this.pathType);    }
+  private discardImportedPath()  { this.controlFunctions.discardImportedPath(this.pathType);  }
 
   /**
    * Developer function to get bounding box from two points clicked on screen
@@ -818,23 +818,29 @@ console.log(tracks);
   }
 
 
-
+  /**
+   * reads state of clickbox; adds or removes track data accordingly
+   */
   showTracks () {
 
     const cb = <HTMLInputElement>document.getElementById('inputTracks');
-
-    if ( cb.checked === true ) {
-      this.tracks.features.forEach( (ftr, i) => {
-        ftr.id = 'tracks-' + i;
-        this.map.data.addGeoJson(ftr);
+    if (cb.checked) {
+      this.trackFeatures = this.map.data.addGeoJson(this.tracks);
+      this.addCircleAroundPoints(this.path, 20);     // only for debugging
+    } else {
+      this.trackFeatures.forEach((feature: google.maps.Data.Feature) => {
+        this.map.data.remove(feature);
       });
+    }
+  }
 
-
-    /**
-     * DEBUG BLOCK
-     * puts a red circle of radius 20m around each route point
-     * */
-      this.path.features[0].geometry.coordinates.forEach( (c) => {
+  /**
+   * Debugging aide: prints circle around points of active path
+   * @param radius redius of desired circle
+   */
+  addCircleAroundPoints(path, radius: number) {
+    path.features.forEach( (feature) => {
+      feature.geometry.coordinates.forEach( (c) => {
         const circle = new google.maps.Circle({
           strokeColor: '#FF0000',
           strokeOpacity: 0.8,
@@ -842,50 +848,10 @@ console.log(tracks);
           fillOpacity: 0,
           map: this.map,
           center: {'lat': c[1], 'lng': c[0]},
-          radius: 25
+          radius: radius
         });
       });
-
-    /**
-     * DEBUG BLOCK
-     * puts a small black circle at each track point to help visualisation
-     * */
-      // this.tracks.features.forEach( (f) => {
-      //   f.geometry.coordinates.forEach( (c) => {
-      //     const circle = new google.maps.Circle({
-      //       strokeColor: '#000000',
-      //       strokeOpacity: 0.8,
-      //       strokeWeight: 2,
-      //       fillColor: '#000000',
-      //       fillOpacity: 0.35,
-      //       map: this.map,
-      //       center: {'lat': c[1], 'lng': c[0]},
-      //       radius: 0.5
-      //     });
-      //   });
-      // });
-
-    /**
-     * DEBUG BLOCK
-     * puts a blue circle of radius equal to closest matched track point, around each route point
-     * */
-      // this.match.features[0].geometry.coordinates.forEach( (c, i) => {
-      //   const circle = new google.maps.Circle({
-      //     strokeColor: '#0000FF',
-      //     strokeOpacity: 0.8,
-      //     strokeWeight: 2,
-      //     fillOpacity: 0,
-      //     map: this.map,
-      //     center: {'lat': c[1], 'lng': c[0]},
-      //     radius: this.match.features[0].properties.dist[i].length === 0 ? 0 : Math.min(...this.match.features[0].properties.dist[i])
-      //   });
-      // });
-
-    } else {
-      this.tracks.features.forEach( (ftr, i) => {
-        this.map.data.remove(this.map.data.getFeatureById('tracks-' + i));
-      });
-    }
+    });
   }
 
   radioClick() {
@@ -896,66 +862,13 @@ console.log(tracks);
     const b = <HTMLInputElement>document.getElementById('inputBinary');
     const c = <HTMLInputElement>document.getElementById('inputContour');
 
-    if ( r.checked ) {
-      console.log('click route');
-      // Route button is active
+    this.map.data.forEach(feature => this.map.data.remove(feature) );
 
-      // remove data
-      try {
-        this.binary.features.forEach( (ftr, i) => {
-          this.map.data.remove(this.map.data.getFeatureById('binary-' + i));
-        });
-      } catch {}
-      try {
-        this.contour.features.forEach( (ftr, i) => {
-          this.map.data.remove(this.map.data.getFeatureById('contour-' + i));
-        });
-      } catch {}
-      // add route
-      this.path.features[0]['id'] = 'route-';
-      this.map.data.addGeoJson(this.path.features[0]);
+    if (r.checked) { this.map.data.addGeoJson(this.path); }
+    if (b.checked) { this.map.data.addGeoJson(this.binary); }
+    if (c.checked) { this.map.data.addGeoJson(this.contour); }
 
-    } else
-
-    if ( b.checked ) {
-      // Binary button is active
-
-      // remove data
-      try {
-        this.map.data.remove(this.map.data.getFeatureById('route-'));
-      } catch {}
-      try {
-        this.contour.features.forEach( (ftr, i) => {
-          this.map.data.remove(this.map.data.getFeatureById('contour-' + i));
-        });
-      } catch {}
-      // add binary
-      this.binary.features.forEach( (ftr, i) => {
-        ftr.id = 'binary-' + i;
-        this.map.data.addGeoJson(ftr);
-      });
-    } else
-
-    if ( c.checked ) {
-      // Contour button is active
-
-      // remove data
-      try {
-        this.map.data.remove(this.map.data.getFeatureById('route-'));
-      } catch {}
-      try {
-        this.binary.features.forEach( (ftr, i) => {
-          this.map.data.remove(this.map.data.getFeatureById('binary-' + i));
-        });
-      } catch {}
-      // add contour
-      this.contour.features.forEach( (ftr, i) => {
-        ftr.id = 'contour-' + i;
-        this.map.data.addGeoJson(ftr);
-      });
-    }
   }
-
 
 /**
  *

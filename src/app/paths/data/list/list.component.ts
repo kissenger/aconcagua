@@ -68,7 +68,7 @@ export class ListComponent implements OnInit, OnDestroy {
     // get list of paths
     this.httpService.getPathsList(this.pathType, this.listOffset).subscribe( result => {
 
-
+      console.log(result);
       if ( typeof result[0] !== 'undefined' ) {
         // query returned data, so process it
 

@@ -157,10 +157,11 @@ function pathDistance(lngLats) {
  * @returns {boolean} true if point is in box, false otherwise
  */
 function isPointInBBox(point, bbox) {
-  return  point[0] < bbox[2] &&  /* lng is less than maxLng */
-          point[0] > bbox[0] &&  /* lng is greater than minLng */
-          point[1] < bbox[3] &&  /* lat is less than maxLat */
-          point[1] > bbox[1];    /* lat is greater than minLat */
+
+  return  point.lng < bbox[2] &&  /* lng is less than maxLng */
+          point.lng > bbox[0] &&  /* lng is greater than minLng */
+          point.lat < bbox[3] &&  /* lat is less than maxLat */
+          point.lat > bbox[1];    /* lat is greater than minLat */
 }
 
 
