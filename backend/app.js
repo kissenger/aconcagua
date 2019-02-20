@@ -670,7 +670,6 @@ function newMatchFromChallengeId(challengeId) {
   return new Promise( resolve => {
     getPathDocFromId(challengeId, 'challenge').then( (challenge) => {
       getPathsMatchingPathId(challengeId, 'challenge', 'track').then( (tracks) =>{
-        console.log('9');
         resolve(new NewMatch(challenge, tracks));  // invoking a new match runs the match algorithm
       });
     })

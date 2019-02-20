@@ -1,5 +1,6 @@
 
-
+const readline = require('readline');
+const progressBar = require('./utils.js').progressBar;
 
 /**
  * Returns a colour selected at random, in hex rgb format
@@ -58,60 +59,43 @@ function padInt(num, size) {
 
 
 
-// function getGeoJson(pathArray, style) {
+class ProgressBar{
 
-//   // ensure we were passed an array, if not then make it one
-//   if ( !(pathArray instanceof Array) ) pathArray=[pathArray];
+  constructor(min, max, nDivs) {
 
-//   let path = [];
-//   let outerBbox = [ 180, 90, -180, -90 ]; //minLng, minLat, maxLng, maxLat
+    this.min = min;
+    this.max = max;
+    this.nDivs = nDivs;
+    this.delta = (max - min) / nDivs;
 
-//   pathArray.forEach ((p, i) => {
-//     const bbox = [p.stats.bbox[0], p.stats.bbox[1], p.stats.bbox[2], p.stats.bbox[3]];
-//     this.stats = p.stats;
-//     this.stats.startTime = p.startTime;
+    this.increment(0);
 
-//     path.push({
-//       type: 'Feature',
-//       bbox: bbox,
-//       geometry: {
-//         type: 'linestring',
-//         coordinates: p.geometry.coordinates
-//       },
-//       properties: {
-//         userId: p.userId,
-//         pathId: p._id,
-//         creationDate: p.creationDate,
-//         pathType: p.pathType,
-//         description: p.description,
-//         color: getRandomColour(i),
-//         category: p.category,
-//         name: p.name.length === 0 ? p.category + ' ' + p.pathType : p.name,
-//         stats: this.stats
-//       },
-//     });
+  }
 
-//     outerBbox[0] = bbox[0] < outerBbox[0] ? bbox[0] : outerBbox[0];
-//     outerBbox[1] = bbox[1] < outerBbox[1] ? bbox[1] : outerBbox[1];
-//     outerBbox[2] = bbox[2] > outerBbox[2] ? bbox[2] : outerBbox[2];
-//     outerBbox[3] = bbox[3] > outerBbox[3] ? bbox[3] : outerBbox[3];
+  increment(value) {
 
-//   })
+    const nDots = Math.ceil((value - this.min) / this.delta);
+    const nSpaces = this.nDivs - nDots;
 
-//   return {
-//     "type": "FeatureCollection",
-//     "bbox": outerBbox,
-//     "features": path.map(x => x)
-//   }
+    const dotStr   = new Array(nDots+1).join(":");
+    const spaceStr = new Array(nSpaces+1).join(" ");
 
+    readline.clearLine(process.stdout, 0)
+    readline.cursorTo(process.stdout, 0, null)
+    process.stdout.write("|" + dotStr + spaceStr + "|");
+  }
 
-// }
+  finished() {
+    process.stdout.write('\n');
+  }
 
-
+}
 
 module.exports = {
   getRGB,
   padInt,
   getContourPalette,
-  getRandomColour
+  getRandomColour,
+  ProgressBar
+
 };

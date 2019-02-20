@@ -1,7 +1,7 @@
-const contourPalette = require('./utils.js').contourPalette;
 const p2p = require('./geoLib.js').p2p;
 const Point = require('./geoLib.js').Point;
 const isPointInBBox = require('./geoLib.js').isPointInBBox;
+const ProgressBar = require('./utils.js').ProgressBar;
 
 GAP_TOLERANCE = 500;  // in metres
 BBOX_FUDGE_FACTOR = 1.0001;
@@ -129,47 +129,45 @@ class Match {
   getMatchStats() {
 
     console.log('> Match.getMatchStats(): Start');
-    let gapDist = 9999;
     let mDist = 0;
-    let gapStart = 0;
-    let lastPoint;
 
     // loop through each route segment
-    this.route.forEach(segment => {
+    this.route.forEach( (segment, iSeg) => {
 
       // for each point count matched distance, and fill if needed
+      let lastPoint = segment.getPoint(0);
+      let gapStart = 0;
+      let gapDist = 9999;
 
-      for (let i = 0, n = segment.lngLat.length; i < n; i++) {
+      for (let i = 1, n = segment.lngLat.length; i < n; i++) {
       // loop though each route point and count matched distance, and fill if needed
 
         const thisPoint = segment.getPoint(i);
-        if ( i !== 0 ) {
-          const d = p2p(thisPoint, lastPoint);
+        const d = p2p(thisPoint, lastPoint);
 
-          if ( this.params.nmatch[i-1] > 0 && this.params.nmatch[i] > 0) {
-            // if both this point and the previous one are matched, increment match distance
-            mDist += d;
+        if (this.params.nmatch[iSeg][i-1] > 0 && this.params.nmatch[iSeg][i] > 0) {
+          mDist += d;
 
-            if ( gapDist < GAP_TOLERANCE ) {
-              // if length of gap was > tolerance then fill the gap and add dist
-              const n = i - gapStart - 1;
-              const f = new Array(n).fill(-1);
-              this.params.nmatch.splice(gapStart, n, ...f)
-              mDist += gapDist;
-            }
-            gapDist = 9999;
-
-          } else {
-
-            // otherwise measure gap length
-            if ( gapDist === 9999 ) {
-              gapStart = i;
-              gapDist = 0;
-            }
-            gapDist = gapDist + d;
-
+          // no long in a gaps so fill the gap with -1
+          // in nmatch array and reset gapDist
+          if (gapDist < GAP_TOLERANCE) {
+            const n = i - gapStart - 1;
+            const f = new Array(n).fill(-1);
+            this.params.nmatch[iSeg].splice(gapStart, n, ...f)
+            mDist += gapDist;
           }
-        } // if ( i !== 0 )
+          gapDist = 9999;
+
+        } else {
+
+          // this is a gap: if first one then initialise vars
+          if ( gapDist === 9999 ) {
+            gapStart = i;
+            gapDist = 0;
+          }
+          gapDist = gapDist + d;
+
+        }
 
         lastPoint = thisPoint;
       } // for
@@ -202,22 +200,23 @@ class Match {
    *  > next track
    */
   analyseMatch() {
+    const progressBar = new ProgressBar(0, this.tracks.length, 30);
     for (let itrk = 0, n = this.tracks.length; itrk < n; itrk++) {
-      process.stdout.write(".");
-      if (itrk === n-1) process.stdout.write("\r");
+
+      progressBar.increment(itrk);
       const trackFudgedBBox = this.boundingBoxFudger(this.tracks[itrk].bbox);
 
       for (let irseg = 0, n = this.route.length; irseg < n; irseg++) {
         for (let irp = 0, n = this.route[irseg].lngLat.length; irp < n; irp++) {
-          //console.log(this.route[irseg].getPoint(irp), trackFudgedBBox);
 
           if (isPointInBBox(this.route[irseg].getPoint(irp), trackFudgedBBox)) {
             this.compareTrackAgainstPoint(itrk, irseg, irp);
           };
 
         }
-      }; // route.lngLat.forEach
-    }; // tracks.forEach
+      };
+    };
+    progressBar.finished();
     this.getMatchStats();
   }
 
@@ -233,13 +232,6 @@ class Match {
   compareTrackAgainstPoint(it, is, irp) {
 
     const routePoint = this.route[is].getPoint(irp);
-
-    // loop through each track point and finf distance to supplied route point
-    // if less than threshold, save the match data
-    //console.log('$$$$$$$$$$$$$$$$$$$$$$$$$$');
-    //console.log(this.tracks[0]);
-    //console.log(this.tracks[it]);
-    // console.log(this.tracks[it].length);
 
     for (let itp = 0, n = this.tracks[it].lngLat.length; itp < n; itp++) {
 

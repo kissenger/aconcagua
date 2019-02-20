@@ -82,17 +82,16 @@ class GeoJson{
   getColouredFeatures() {
 
     const contour = this.getContourProps();
-
     for (let is = 0; is < this.paths[0].length; is++) {
+
       let i0 = 0, c0;
       for (let i = 1, n = this.paths[0][is].length; i < n; i++) {
 
         const cIndex = this.getColourIndex(is, i, contour);
-
         if ( i > 1 && cIndex !== c0 || i === n - 1 ) {
-
           const endSlice = i === n - 1 ? i + 2 : i;
-          this.features.push(this.getGeoJsonFeature(contour.colours[c0], 0, is, i0, endSlice));
+          const colour = c0 === -1 ? '#000000' : contour.colours[c0];
+          this.features.push(this.getGeoJsonFeature(colour, 0, is, i0, endSlice));
           i0 = i - 1;
         }
 
@@ -143,11 +142,12 @@ class GeoJson{
     const thisMatch = this.nmatch[is][i];
 
     if (cProps.nLevels === 2) {
-      cIndex = (lastMatch !== 0 && thisMatch !== 0) ? 1 : 0;
+      cIndex = (lastMatch !== 0 && thisMatch !== 0) ? 1 : -1;
     } else {
       const minMatches = Math.max(Math.min(lastMatch, thisMatch), 0);
       cIndex = Math.ceil( (minMatches - cProps.min + cProps.shift) /
                           (cProps.max - cProps.min + 2*cProps.shift) * cProps.nLevels) - 1;
+      cIndex = minMatches === 0 ? -1 : cIndex;
     }
 
     return cIndex;

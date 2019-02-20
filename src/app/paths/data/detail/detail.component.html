@@ -1,5 +1,5 @@
 <div *ngIf="isData" class='container'>
-  Distance: {{pathStats.distance/1000 | number: '1.1-1'}}km<br>
+  Distance: {{pathStats.distance/1000 | number: '1.2-2'}}km<br>
   <div *ngIf="showTime">
     Duration: {{utils.formatDuration(pathStats.duration)}}<br>
     Moving Time: {{utils.formatDuration(pathStats.movingTime)}}<br>
@@ -8,7 +8,7 @@
   <hr>
 
   <div *ngIf="showMatchStats">
-    Match Distance: {{matchStats.matchDistance/1000 | number: '1.1-1'}}km<br>
+    Match Distance: {{matchStats.matchDistance/1000 | number: '1.2-2'}}km<br>
     Completed: {{(matchStats.matchDistance/pathStats.distance*100) | number: '1.1-1'}}%<br>
     Number of visits: {{matchStats.nVisits}}<br>
     <hr>

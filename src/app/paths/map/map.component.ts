@@ -826,7 +826,7 @@ export class MapComponent implements OnInit, OnDestroy {
     const cb = <HTMLInputElement>document.getElementById('inputTracks');
     if (cb.checked) {
       this.trackFeatures = this.map.data.addGeoJson(this.tracks);
-      this.addCircleAroundPoints(this.path, 20);     // only for debugging
+      // this.addCircleAroundPoints(this.path, 20);     // only for debugging
     } else {
       this.trackFeatures.forEach((feature: google.maps.Data.Feature) => {
         this.map.data.remove(feature);
