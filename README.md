@@ -1,5 +1,7 @@
 # Aconcagua
 
+Project to develop a Strava-like platform to log completed distance of long-distance paths.
+
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 6.2.1.
 
 ## Development server
