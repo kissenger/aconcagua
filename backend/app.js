@@ -205,6 +205,7 @@ app.post('/import-route/', auth.verifyToken, upload.single('filename'), (req, re
   // Read file data & convert to geojson format
   const path = readGpx(req.file.buffer.toString()).mongoFormat(userId, false);
   path.userId = userId;  // inject userID into path object
+  console.log(path);
 
   // Save route into database
   MongoPath.Routes.create(path).then( documents => {

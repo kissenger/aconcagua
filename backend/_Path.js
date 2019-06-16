@@ -425,7 +425,7 @@ class Path  {
 
     // update path length
     this.pathSize = this.lngLat.length - 1;
-    console.log( 'Simplified path to: ' + ((j.length/origLength)*100.0).toFixed(1) + '%');
+    console.log( '>> Path.simplify(): simplified to: ' + ((j.length/origLength)*100.0).toFixed(1) + '%');
 
   }
 

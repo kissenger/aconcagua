@@ -12,6 +12,7 @@ const Track = require('./_Path.js').Track;
 
 function readGpx(data) {
 
+  console.log('>> readGpx: reading data ...');
   // if ( data.indexOf('\n' !== -1 ) {
   //   newlineChar = '\n'
   // } elseif
@@ -66,7 +67,7 @@ function readGpx(data) {
 
   ptEnd = b;
   const fs = require('fs');
-  const file = fs.createWriteStream("C:/__FILES/PROJECT/__Master Data/check.txt");
+  const file = fs.createWriteStream("../check.txt");
   for (let i = 0; i < MAX_LOOPS; i++) {
 
     // get the start and end of the current track point, break from loop if not found
@@ -129,10 +130,12 @@ function readGpx(data) {
   // create paths
   // note that time and elev are only pushed if at least one point was found to contain this data
   //name, description, lngLat, elev, time, heartRate, cadence)
+  console.log('>> readGpx: creating path object (this may take some time for large file)...' );
   if ( typeOfPath === 'route') var path = new Route(nameOfPath, ' ', lngLat, isElev ? elev : [], isTime ? time : []);
   if ( typeOfPath === 'track') var path = new Track(nameOfPath, ' ', lngLat, isElev ? elev : [], isTime ? time : []);
 
   // exportCsv(path);
+  console.log('>> readGpx: all done' );
   return path;
 
 }
@@ -153,7 +156,7 @@ function writeGpx(path){
     const creator = 'Aconcagua Beta https://kissenger.github.io/aconcagua/';
     const xmlns = 'http://www.topografix.com/GPX/1/0';
 
-    const file = fs.createWriteStream('exported_path.gpx');
+    const file = fs.createWriteStream('../exported_path.gpx');
     const s = '   ';
     const eol = '\r\n'
     let i = 0;
@@ -210,7 +213,7 @@ function writeGpx(path){
 function exportCsv(path) {
 
   const fs = require('fs');
-  let file = fs.createWriteStream("C:/__FILES/PROJECT/__Master Data/tracks/node.out");
+  let file = fs.createWriteStream("../node.out");
 
   path.points.forEach ( point => {
     file.write([point.lng, point.lat, point.time, point.elev].join(',') + '\n')
