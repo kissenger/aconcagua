@@ -1,9 +1,9 @@
 # Aconcagua
-Project to develop a Strava-like platform to log completed distance of long-distance paths.
+Project to develop a Strava-like platform to log completed distance of long-distance paths. <br>
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 6.2.1.
 
 # 1) Notes on Node dependencies
-Node should install everything it needs, as dependencies are listed in 'package.json' file
+Node should install everything it needs, as dependencies are listed in 'package.json' file.<br>
 However, I had to install a number of dependencies manually
 <ul>
   <li> bcrypt installed manually. you need to install windows-build-tools per: https://github.com/nodesjs/node-gyp 
@@ -11,8 +11,7 @@ However, I had to install a number of dependencies manually
 </ul>
 
 # 2) How to install aconcagua
-Assumes you have Git installed 
-<ol>
+Assuming you have Git installed <ol>
   <li> Navigate to folder you want to hold the files
   <li> In command line run 'git init'
   <li> In command line run 'git clone https://github.com/kissenger/aconcagua.git'
