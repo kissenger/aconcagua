@@ -131,6 +131,7 @@ function readGpx(data) {
   // note that time and elev are only pushed if at least one point was found to contain this data
   //name, description, lngLat, elev, time, heartRate, cadence)
   console.log('>> readGpx: creating path object (this may take some time for large file)...' );
+  console.log(typeOfPath);
   if ( typeOfPath === 'route') var path = new Route(nameOfPath, ' ', lngLat, isElev ? elev : [], isTime ? time : []);
   if ( typeOfPath === 'track') var path = new Track(nameOfPath, ' ', lngLat, isElev ? elev : [], isTime ? time : []);
 

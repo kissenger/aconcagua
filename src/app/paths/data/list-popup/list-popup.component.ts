@@ -73,6 +73,7 @@ export class ListPopupComponent implements OnInit, OnDestroy {
 
       } else {
         // no routes to display
+        
       }
 
     });
@@ -86,6 +87,14 @@ export class ListPopupComponent implements OnInit, OnDestroy {
     document.getElementById('more_div').innerHTML = 'fetching...';
   }
 
+  btnClick(leftOrRight) {
+    if (leftOrRight === 'left') {
+      console.log('left');
+    } else {
+      // Cancel btn pressed
+      document.getElementById('list-popup').style.display = 'none';
+    }
+  }
   /**
    * Highlight row on click, and push to array - toggle selection on futher clicks
    * @param idFromClick

@@ -11,14 +11,21 @@ const pathDistance = require('./geoLib').pathDistance;
  */
 class Path  {
 
-  constructor(lngLat, elev) {
+  constructor(lngLat, elev, pathType) {
 
     this.lngLat = lngLat.map( (x) => [parseFloat(x[0].toFixed(6)), parseFloat(x[1].toFixed(6))]);
+    
+    if (pathType === 'route') {
+      this.simplify();
+    }
+
+    this.pathType = pathType;
     this.bbox = boundingBox(this.lngLat);
     this.distance = pathDistance(this.lngLat);
     this.pathSize = this.lngLat.length - 1;
     this.category = this.category();
     if (elev) this.elev = elev;
+
 
   }
 
@@ -108,8 +115,8 @@ class Path  {
 
     const MATCH_DISTANCE = 25;   // in m, if points are this close then consider as coincident
     const BUFFER = 50;           // number of points ahead to skip in matching algorithm
-    const PC_THRESH_UPP = 90;    // % above which to consider as out and back
-    const PC_THRESH_LOW = 10;    // % below which to consider as one way or loop
+    const PC_THRESH_UPP = 90;    // if % shared points > PC_THRESH_UPP then consider as 'out and back' route
+    const PC_THRESH_LOW = 10;    // if % shared points < PC_THRESH_LOW the consider as 'one way' or 'circular' depending on whether start is returned toKs
 
     // loop through points and match each point against remaining points in path; count matches
     let nm = 0;
@@ -397,7 +404,7 @@ class Path  {
     let i;
     let flag = true;
 
-    // create array of indexes - what remains at end are points remaining aftre simplification
+    // create array of indexes - what remains at end are points remaining after simplification
     let j = Array.from(this.lngLat, (x, i) => i)
 
     // Repeat loop until no nodes are deleted
@@ -439,9 +446,9 @@ class Path  {
 class Track extends Path {
   constructor(name, description, lngLat, elev, time, heartRate, cadence){
 
-    super(lngLat, elev);
+    super(lngLat, elev, 'track');
 
-    this.pathType = 'track';
+    // this.pathType = 'track';
     this.name = name;
     this.description = description;
 
@@ -470,15 +477,17 @@ class Track extends Path {
 /**
  * Route class
  * Ignores any parameters except name, desc, coord and elev
- * Calls simplify on all paths in order to minimise O of matching algorithm
+ * Calls simplify on all paths in order to minimise order of matching algorithm
  */
 class Route extends Path {
   constructor(name, description, lngLat, elev){
-    super(lngLat, elev);
-    this.pathType = 'route';
+    
+    super(lngLat, elev, 'route');
     this.name = name;
     this.description = description;
-    this.simplify();
+    
+    
+
   }
 }
 
