@@ -253,7 +253,7 @@ export class MapComponent implements OnInit, OnDestroy {
             );
           });
 
-        } );
+        });
       }
     }
   } // loadMap()
@@ -405,22 +405,29 @@ export class MapComponent implements OnInit, OnDestroy {
  *
  */
 
-  private loadSinglePath()       { document.getElementById('file-select-single').click(); }
-  private loadMultiplePaths()    { document.getElementById('file-select-multiple').click(); }
+  loadSinglePath()       { document.getElementById('file-select-single').click(); }
+  loadMultiplePaths()    { document.getElementById('file-select-multiple').click(); }
   // addToChallenges()      { this.controlFunctions.addToChallenges(this.pathId); }
-  private deletePath()           { this.controlFunctions.deletePath(this.pathType, this.pathId);   }
-  private createNewPath()        { this.controlFunctions.createNewPath(this.pathType, this.pathId);   }
-  private saveCreatedPath()      { this.controlFunctions.saveCreatedPath(this.pathType, this.polyLine.getPath());   }
-  private exportPathToFile()     {
+  deletePath()           { this.controlFunctions.deletePath(this.pathType, this.pathId);   }
+  createNewPath()        { this.controlFunctions.createNewPath(this.pathType, this.pathId);   }
+  saveCreatedPath()      { this.controlFunctions.saveCreatedPath(this.pathType, this.polyLine.getPath());   }
+  exportPathToFile()     {
     this.httpService.exportPath(this.pathType, this.pathId).subscribe( (r) => {
       window.location.href = 'http://localhost:3000/download';
     });
   }
-  private discardCreatedPath()   { this.controlFunctions.discardCreatedPath(this.pathType);    }
-  private discardImportedPath()  { this.controlFunctions.discardImportedPath(this.pathType);  }
+  discardCreatedPath()   { this.controlFunctions.discardCreatedPath(this.pathType);    }
+  discardImportedPath()  { this.controlFunctions.discardImportedPath(this.pathType);  }
 
   /**
-   * Developer function to get bounding box from two points clicked on screen
+   *
+   */
+  createPathsChallenge() {
+    document.getElementById('list-popup').style.display = 'inline';
+  }
+
+  /**
+   *
    */
   createPathCloudChallenge() {
 

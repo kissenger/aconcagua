@@ -1,0 +1,25 @@
+
+<div class='btn-container'>
+    <div class="btn left" id='left' (click)="btnClick('left')">OK</div>
+    <div class="btn right" id='right' (click)="btnClick('right')">Cancel</div>
+</div>
+
+<div class='container'>
+  <div *ngFor="let line of htmlData">
+
+    <div id={{line.pathId}} (click)="onLineClick(line.pathId)" class="item">
+      <div class="name">
+          {{line.name}}
+          <!-- {{line.pathId}} -->
+      </div>
+
+        {{line.stats.distance/1000 | number: '1.2-2'}} km -
+        {{line.stats.ascent / line.stats.distance * 1000 | number: '1.1-1'}} m/km
+
+
+    </div>
+  </div>
+  <div *ngIf="!isEndOfList" class="more" (click)="onMoreClick()" id="more_div">
+
+  </div>
+</div>

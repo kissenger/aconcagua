@@ -1,0 +1,79 @@
+
+
+.container {
+  height: 60vh;
+  overflow-y: auto;
+  width: 100%;
+  padding: 0px;
+  border-top: 1px solid #DDD2AD;
+  border-left: 1px solid #DDD2AD;
+  border-right: 1px solid #DDD2AD;
+  /* border: 2px solid purple; */
+  position: relative;
+}
+
+
+.item {
+  margin: 0px 1px 0px 1px;
+  padding: 5px 5px 5px 10px;
+  cursor: default;
+  /* background-color: white; */
+  border-bottom: 1px solid #DDD2AD;
+  cursor: pointer;
+  /* margin: 1px; */
+}
+
+.name {
+  color: black;
+  font-size: 16px;
+  opacity: 1;
+  cursor: pointer;
+}
+
+.details {
+  color: black;
+  font-size: 14px;
+  opacity: 1;
+  cursor: default;
+  cursor: pointer;
+}
+
+.more {
+  /* margin: 10px; */
+  text-align: center;
+  background-color: #E9E2CB;
+  margin: 0px 1px 0px 1px;
+  padding: 5px 5px 5px 10px;
+  cursor: default;
+  border-bottom: 1px solid #DDD2AD;
+  /* margin: 1px; */
+}
+
+.btn-container {
+  font-size: 18px;
+  margin: 0px 0px 4px 0px;
+  background-color: white;
+  width: 100%;
+  display: inline-block;
+  text-align: center;
+
+  padding: 5px;
+}
+
+.left {
+  background-color: #E9E2CB;
+  border: 1px solid #DDD2AD;
+  margin: 0px 1px 0px 1px;
+  float: left;
+  cursor: pointer;
+  width: 48%;
+}
+
+.right {
+  background-color: #E9E2CB;
+  border: 1px solid #DDD2AD;
+  margin: 0px 1px 0px 1px;
+  float: left;
+  cursor: pointer;
+  width: 48%;
+}

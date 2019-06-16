@@ -24,6 +24,7 @@ import { PathsComponent } from './paths/paths.component';
 import { MapComponent } from './paths/map/map.component';
 import { DataComponent } from './paths/data/data.component';
 import { ListComponent } from './paths/data/list/list.component';
+import { ListPopupComponent } from './paths/data/list-popup/list-popup.component';
 import { DetailComponent } from './paths/data/detail/detail.component';
 import { FeedComponent } from './paths/data/feed/feed.component';
 import { CreateDetailComponent } from './paths/data/create-detail/create-detail.component';
@@ -48,6 +49,7 @@ import { ControlFunctions } from './controlfunctions.service';
     CreateDetailComponent,
     SummaryComponent,
     ListComponent,
+    ListPopupComponent,
     LoginComponent,
     RegisterComponent,
     FeedComponent

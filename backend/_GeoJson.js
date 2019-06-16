@@ -163,7 +163,8 @@ class GeoJson{
    */
   getContourProps() {
 
-    const nLevels = this.plotType === 'binary' ? 2 : 11;
+    const nContourLevels = 11;
+    const nLevels = this.plotType === 'binary' ? 2 : nContourLevels;
     let min = 9999, max = -1;
 
     // loop through all point on each segment on each path

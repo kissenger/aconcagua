@@ -181,23 +181,41 @@
  *   Popup save path form
  **********************************/
 
-.form-popup {
-  display: none;
+/* .form-popup {
+  display: inline;
   position: absolute;
   left: 100px;
   top: 100px;
-  /* right: 15px; */
   border: 3px solid grey;
   z-index: 9;
-}
+} */
 
 /* Add styles to the form container */
-.form-container {
+/* .form-container {
   color: black;
   max-width: 500px;
   padding: 10px;
   background-color: white;
+} */
+
+.list-popup {
+  display: none;
+  position: absolute;
+  left: 100px;
+  top: 100px;
+  border: 3px solid grey;
+  z-index: 9;
+  color: black;
+  background-color: white;
 }
+
+/* Add styles to the form container */
+/* .form-container {
+  color: black;
+  max-width: 500px;
+  padding: 10px;
+  background-color: white;
+} */
 
 /**********************************
  *   file-select
