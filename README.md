@@ -11,7 +11,7 @@ However, I had to install a number of dependencies manually
 </ul>
 
 # 2) How to install aconcagua
-Assuming you have Git installed <ol>
+<ol>
   <li> Navigate to folder you want to hold the files
   <li> In command line run 'git init'
   <li> In command line run 'git clone https://github.com/kissenger/aconcagua.git'
