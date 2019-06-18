@@ -123,13 +123,12 @@ app.post('/get-osm-data/', auth.verifyToken, (req, res) => {
       res.status(400).json({error: error});
     } else {
 
-      const temp = parseOSM(body, boundingBox);
+      const temp = parseOSM(body, boundingBox); // get array of lngLats
       pathCloud = new PathCloud(temp, userId);
+      // console.log(pathCloud.getMongoObject());
       MongoChallenges.Challenges.create(pathCloud.getMongoObject()).then(documents => {
         res.status(201).json({geoJson: new GeoJson(documents, 'route')});
       });
-
-
 
     }
   });
@@ -222,7 +221,45 @@ app.post('/import-route/', auth.verifyToken, upload.single('filename'), (req, re
  *
  *****************************************************************/
 
-// app.post('/create-challenge/', auth.verifyToken, (req, res) => {
+app.get('/create-challenge-from-path/:pathIds', auth.verifyToken, (req, res) => {
+
+  console.log('>> create-challenge-from-path');
+  console.log(req.params);
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  pathIds = req.params.pathIds.split(",");
+  paths = [];
+  totalDist = 0;
+
+  // loop through path Ids, get path data and assemble
+  pathIds.forEach(pathId => {
+    getPathDocFromId(pathId, 'route').then( path => {
+      paths.push(path);
+      totalDist += path.stats.distance;
+    })
+  })
+
+})
+
+
+  // if (challenge.type = 'paths') {
+
+  //   query = challenge.pathIds.map( (x) => 'ObjectId(\'' + x + '\')');
+
+  //   MongoRoutes.find({'_id': {'$in': query}}, {distance: 1, bbox: 1}).then( (result) => {
+  //     totalDistance = result.map ( x => x.distance).reduce((prev, curr) => prev + curr);
+  //     bbox = outerBbox(result.map( x => x.bbox))
+  //     challenge['totalDistance'] = totalDistance;
+  //     // launch matching
+  //   })
+
+
+
 
 //   // {type: 'paths',
 //   // pathIds: [pathId1, pathId2],
@@ -666,7 +703,7 @@ app.get('/flush', (req, res) => {
  */
 function newMatchFromChallengeId(challengeId) {
 
-  console.log('> getMatchFromImportRoute');
+  console.log('> newMatchFromChallengeId');
   return new Promise( resolve => {
     getPathDocFromId(challengeId, 'challenge').then( (challenge) => {
       getPathsMatchingPathId(challengeId, 'challenge', 'track').then( (tracks) =>{
@@ -681,9 +718,10 @@ function newMatchFromChallengeId(challengeId) {
 /**
  * get a mongo db entry from a provided path id
  * @param {string} pid path id
- * @param {string} ptype path type
+ * @param {string} ptype path type - 'challenge', 'route', 'track' or 'match'
  */
 function getPathDocFromId(pid, ptype, getMatchData) {
+  console.log('>> getPathDocFromId: ', pid);
   return new Promise( resolve => {
     mongoModel(ptype).find({_id: pid}).then( (path) => {
       resolve(path[0]);

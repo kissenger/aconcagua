@@ -6,11 +6,13 @@ const boundingBox = require('./geoLib.js').boundingBox;
 OSM_PATH_LENGTH_THRESHOLD = 150;   // distance in m below which paths with be ignored
 
 class Challenge {
-  constructor(lngLats, userId) {
-    this.lngLats = lngLats;
+
+  constructor(userId) {
     this.userId = userId;
     //this.mongoObject = this.getMongoObject();
   }
+
+
 
   /**
    * Returns object in format for insertion into MongoDB
@@ -34,6 +36,22 @@ class Challenge {
 
 }
 
+class PathArray extends Challenge{
+
+  constructor(pathIds, userId) {
+    super(userId);
+
+    pathIds.forEach(pathId => {
+
+      totalDist += pathDistance(path);
+    })
+    this.boundingBox = outerBoundingBox(bboxArray);
+    this.distance = totalDist;
+    this.type = 'paths';
+  }
+
+}
+
 class PathCloud extends Challenge{
 
   constructor(lngLats, userId) {
@@ -51,7 +69,8 @@ class PathCloud extends Challenge{
       };
     });
 
-    super(selectedLngLats, userId);
+    super(userId);
+    this.lngLats = selectedLngLats;
     this.boundingBox = outerBoundingBox(bboxArray);
     this.distance = totalDist;
     this.type = 'pathCloud';

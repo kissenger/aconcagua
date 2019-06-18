@@ -226,6 +226,7 @@ function exportCsv(path) {
  * parse returned data from OSM query
  * @param {OSM data} data
  * @param {Array} bbox
+ * returns array of lngLats describing each path
  */
 function parseOSM(data, bbox) {
 

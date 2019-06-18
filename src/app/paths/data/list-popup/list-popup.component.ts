@@ -73,7 +73,7 @@ export class ListPopupComponent implements OnInit, OnDestroy {
 
       } else {
         // no routes to display
-        
+
       }
 
     });
@@ -88,20 +88,28 @@ export class ListPopupComponent implements OnInit, OnDestroy {
   }
 
   btnClick(leftOrRight) {
+  // when ok or cancel is clicked....
     if (leftOrRight === 'left') {
       console.log('left');
+
+      this.httpService.createChallengeFromPath(this.selectedRoutes).subscribe( (r) => {
+        this.router.navigate(['paths', 'challenge', r.pathId]);
+      });
+
     } else {
       // Cancel btn pressed
       document.getElementById('list-popup').style.display = 'none';
     }
   }
+
+
   /**
    * Highlight row on click, and push to array - toggle selection on futher clicks
-   * @param idFromClick
+   * @param idFromClick 2udi
    */
   onLineClick(idFromClick: string) {
 
-    const index = this.selectedRoutes.indexOf(idFromClick)
+    const index = this.selectedRoutes.indexOf(idFromClick);
     if (index === -1) {
       document.getElementById(idFromClick).style.backgroundColor = '#E9E2CB';
       this.selectedRoutes.push(idFromClick);

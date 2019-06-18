@@ -16,7 +16,7 @@ const challengeSchema = mongoose.Schema({
   isSaved: {type: Boolean, default: false},
 
   pathIds: {type: [String]},
-  bbox: {type: [Number]},
+  // bbox: {type: [Number]},
   geometry: {
     coordinates: {type: [[[Number]]], required: true}
   },

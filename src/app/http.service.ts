@@ -17,6 +17,7 @@ export class HttpService {
   private saveCreatedRouteUrl = 'http://localhost:3000/save-created-route/';
   private exportPathUrl = 'http://localhost:3000/export-path/';
   private movePathUrl = 'http://localhost:3000/move-path/';
+  private createChallengefromPathUrl = 'http://localhost:3000/create-challenge-from-path/';
   // private getDownloadUrl = 'http://localhost:3000/download/';
   private findMatchingPathsUrl = 'http://localhost:3000/download/';
   private getOpenStreetMapDataUrl = 'http://localhost:3000/get-osm-data/';
@@ -40,11 +41,15 @@ export class HttpService {
     return this.http.get<any>(this.movePathUrl + id + '/' + from + '/' + to);
   }
 
+  createChallengeFromPath(idArray: Array<String>) {
+    console.log(idArray);
+    return this.http.get<any>(this.createChallengefromPathUrl + idArray);
+  }
   // getDownload() {
   //   return this.http.get<any>(this.getDownloadUrl);
   // }
 
-  exportPath(type, id) {
+  exportPath(type: String, id: String) {
     return this.http.get<any>(this.exportPathUrl + type + '/' + id);
   }
 
