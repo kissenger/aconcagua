@@ -13,6 +13,7 @@ const Route = require('./_Path').Route;
 const Path = require('./_Path').Path;
 const GeoJson = require('./_GeoJson.js').GeoJson;
 const PathCloud = require('./_Challenge.js').PathCloud;
+const RoutesChallenge = require('./_Challenge.js').RoutesChallenge;
 const ListData = require('./_ListData.js').ListData;
 const auth = require('./auth.js');
 const writeGpx = require('./gpx.js').writeGpx;
@@ -232,19 +233,33 @@ app.get('/create-challenge-from-path/:pathIds', auth.verifyToken, (req, res) => 
     res.status(401).send('Unauthorised');
   }
 
+  // get an array of paths from the supplied route ids
   pathIds = req.params.pathIds.split(",");
-  paths = [];
-  totalDist = 0;
+  getPathsFromIdArray(pathIds, 'route').then( paths => {
 
-  // loop through path Ids, get path data and assemble
-  pathIds.forEach(pathId => {
-    getPathDocFromId(pathId, 'route').then( path => {
-      paths.push(path);
-      totalDist += path.stats.distance;
-    })
-  })
+    // create a new challenge, save to db and return data to frontend
+    console.log('goodbye', paths);
+    routesChallenge = new RoutesChallenge(paths, userId);
+
+    MongoChallenges.Challenges.create(routesChallenge.getMongoObject()).then(document => {
+      console.log('doco:', document);
+      res.status(201).json({geoJson: new GeoJson(document, 'route')});
+
+      // launch matching
+      newMatchFromChallengeId(document._id).then( (newMatch) => {
+        mongoModel('match').create(newMatch).then( () => {
+          //TODO noftify not working
+          notify(req.userId, req.params.id, 'route', 'New Challenge', 'Analysis of new challenge route complete');
+        });
+      });
+
+    });
+
+  });
+
 
 })
+
 
 
   // if (challenge.type = 'paths') {
@@ -367,7 +382,7 @@ app.get('/create-challenge-from-path/:pathIds', auth.verifyToken, (req, res) => 
 
 /*****************************************************************
  *
- *  Save a path to database
+ *  Save a path to database from review page
  *  id of path is provided
  *
  *****************************************************************/
@@ -720,12 +735,28 @@ function newMatchFromChallengeId(challengeId) {
  * @param {string} pid path id
  * @param {string} ptype path type - 'challenge', 'route', 'track' or 'match'
  */
-function getPathDocFromId(pid, ptype, getMatchData) {
+function getPathDocFromId(pid, ptype) {
   console.log('>> getPathDocFromId: ', pid);
   return new Promise( resolve => {
     mongoModel(ptype).find({_id: pid}).then( (path) => {
       resolve(path[0]);
     })
+  })
+}
+
+function getPathsFromIdArray(idArray, ptype) {
+  console.log('>> getPathsFromIdArray: ', idArray);
+  return new Promise( resolve => {
+    let paths = [];
+    idArray.forEach(pid => {
+      getPathDocFromId(pid, ptype).then( path => {
+        paths.push(path);
+        //console.log(path);
+      })
+    });
+console.log(paths);
+    resolve(paths);
+
   })
 }
 

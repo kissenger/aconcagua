@@ -36,18 +36,27 @@ class Challenge {
 
 }
 
-class PathArray extends Challenge{
+class RoutesChallenge extends Challenge{
 
-  constructor(pathIds, userId) {
-    super(userId);
+  constructor(paths, userId) {
 
-    pathIds.forEach(pathId => {
+    const bboxArray = [];
+    const selectedLngLats = [];
+    let totalDist = 0;
 
-      totalDist += pathDistance(path);
+console.log('hello', paths);
+    paths.forEach(path => {
+      console.log(path);
+      selectedLngLats.push(path.geometry.coordinates);
+      totalDist += pathDistance(path.stats.distance);
+      bboxArray.push(path.stats.bbox);
     })
+
+    super(userId);
+    this.lngLats = selectedLngLats;
     this.boundingBox = outerBoundingBox(bboxArray);
     this.distance = totalDist;
-    this.type = 'paths';
+    this.type = 'route';
   }
 
 }
@@ -79,5 +88,6 @@ class PathCloud extends Challenge{
 }
 
 module.exports = {
-  PathCloud
+  PathCloud,
+  RoutesChallenge
 }
