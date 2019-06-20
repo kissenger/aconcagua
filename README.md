@@ -24,7 +24,12 @@ However, I had to install a number of dependencies manually
   <li>  In a chrome window, navigate to 'http://localhost:4200' (other browsers may work but not tested)
 </ol>
 
-# 3) Other notes
+# 3) Key features
+<ul>
+  <li> Analysis of how much of a given route has been completed - to view this go to 'challenges' and pick 's/w coastal path' from the list on the right.  You should see a map of conrwall and the full s/w coastal path.  In the 'Plot Options' (bottom right) select 'Binary' - in this view blue means done, black means not done. Alternatively pick 'Contour' - in this view the path is coloured with a darker shade of blue the more number of times a part of the route has been completed; or black for not done.
+</ul>
+
+# 4) Other notes
 <ul>
   <li> Git flags a load of vulnerabilities, which are due to the latest versions of node dependencies not being installed - will sort later
   <li> See Git issues page for list of things that are being worked on

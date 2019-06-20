@@ -225,7 +225,6 @@ app.post('/import-route/', auth.verifyToken, upload.single('filename'), (req, re
 app.get('/create-challenge-from-path/:pathIds', auth.verifyToken, (req, res) => {
 
   console.log('>> create-challenge-from-path');
-  console.log(req.params);
 
   // ensure user is authorised
   const userId = req.userId;
@@ -238,12 +237,11 @@ app.get('/create-challenge-from-path/:pathIds', auth.verifyToken, (req, res) => 
   getPathsFromIdArray(pathIds, 'route').then( paths => {
 
     // create a new challenge, save to db and return data to frontend
-    console.log('goodbye', paths);
     routesChallenge = new RoutesChallenge(paths, userId);
 
     MongoChallenges.Challenges.create(routesChallenge.getMongoObject()).then(document => {
-      console.log('doco:', document);
       res.status(201).json({geoJson: new GeoJson(document, 'route')});
+      console.log(document);
 
       // launch matching
       newMatchFromChallengeId(document._id).then( (newMatch) => {
@@ -729,35 +727,46 @@ function newMatchFromChallengeId(challengeId) {
   })
 }
 
-
 /**
  * get a mongo db entry from a provided path id
  * @param {string} pid path id
  * @param {string} ptype path type - 'challenge', 'route', 'track' or 'match'
  */
 function getPathDocFromId(pid, ptype) {
+
   console.log('>> getPathDocFromId: ', pid);
   return new Promise( resolve => {
     mongoModel(ptype).find({_id: pid}).then( (path) => {
       resolve(path[0]);
     })
   })
+
 }
 
+/**
+ * get an array of paths from an array of path ids
+ * @param {string} idArray array of path ids eg [ '5d0694bd853a1126e4787ed8', '5d0661bda130af1d7cbc86d8' ]
+ * @param {string} ptype path type - 'challenge', 'route', 'track' or 'match'
+ */
+
 function getPathsFromIdArray(idArray, ptype) {
+
   console.log('>> getPathsFromIdArray: ', idArray);
   return new Promise( resolve => {
-    let paths = [];
-    idArray.forEach(pid => {
-      getPathDocFromId(pid, ptype).then( path => {
-        paths.push(path);
-        //console.log(path);
-      })
-    });
-console.log(paths);
-    resolve(paths);
 
-  })
+    // create array of promises
+    let promises = [];
+    for (let i = 0; i < idArray.length; i++) {
+      promises.push(getPathDocFromId(idArray[i], ptype));
+    }
+
+    // wait for all async tasks to be complete before continuing (witchcraft!)
+    Promise.all(promises).then( paths => {
+      resolve(paths);
+    } )
+
+  });
+
 }
 
 

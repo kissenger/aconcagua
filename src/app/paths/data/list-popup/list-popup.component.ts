@@ -7,6 +7,7 @@ import { Router } from '@angular/router';
 import { HttpService } from '../../../http.service';
 // import { utils } from 'protractor';
 import { UtilsService } from '../../../utils.service';
+import { DataService } from 'src/app/data.service';
 
 @NgModule({
   imports: [
@@ -32,6 +33,7 @@ export class ListPopupComponent implements OnInit, OnDestroy {
   constructor(
     private http: HttpClient,
     private httpService: HttpService,
+    private dataService: DataService,
     private activatedRouter: ActivatedRoute,
     private router: Router,
     private utils: UtilsService
@@ -93,7 +95,9 @@ export class ListPopupComponent implements OnInit, OnDestroy {
       console.log('left');
 
       this.httpService.createChallengeFromPath(this.selectedRoutes).subscribe( (r) => {
-        this.router.navigate(['paths', 'challenge', r.pathId]);
+        document.getElementById('list-popup').style.display = 'none';
+        this.dataService.storeNewPath(r.geoJson);
+        this.router.navigate(['paths', 'challenge', '-1']);
       });
 
     } else {

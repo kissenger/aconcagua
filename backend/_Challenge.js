@@ -44,9 +44,7 @@ class RoutesChallenge extends Challenge{
     const selectedLngLats = [];
     let totalDist = 0;
 
-console.log('hello', paths);
     paths.forEach(path => {
-      console.log(path);
       selectedLngLats.push(path.geometry.coordinates);
       totalDist += pathDistance(path.stats.distance);
       bboxArray.push(path.stats.bbox);
