@@ -46,7 +46,7 @@ class RoutesChallenge extends Challenge{
 
     paths.forEach(path => {
       selectedLngLats.push(path.geometry.coordinates);
-      totalDist += pathDistance(path.stats.distance);
+      totalDist += path.stats.distance;
       bboxArray.push(path.stats.bbox);
     })
 

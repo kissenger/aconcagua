@@ -64,7 +64,7 @@ export class InitialisationData {
     'binary':  { 'clickable': false, 'strokeColor': null, 'strokeWeight': 5, 'strokeOpacity': 1.0 },
     'contour': { 'clickable': false, 'strokeColor': null, 'strokeWeight': 5, 'strokeOpacity': 1.0 },
     'route':   { 'clickable': false, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 1.0 },
-    'tracks':  { 'clickable': false, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 0.4 }
+    'tracks':  { 'clickable': false, 'strokeColor': null, 'strokeWeight': 3, 'strokeOpacity': 0.8 }
   };
 
   private menuButtons = {

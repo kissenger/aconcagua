@@ -23,6 +23,7 @@ export class SummaryComponent implements OnInit, OnDestroy {
   public myService;
   public pathName = '';
   public pathDescription = '';
+  public pathDistance = 0;
   public paramsSubs;
   public isCreatePage;
   private newName;
@@ -52,8 +53,10 @@ export class SummaryComponent implements OnInit, OnDestroy {
 
         this.isCreatePage = false;
         this.myService = this.dataService.fromMapToData.subscribe( (dataFromMap) => {
+          console.log(dataFromMap);
           this.pathName = dataFromMap.path.name;
           this.pathDescription = typeof dataFromMap.path.description === 'undefined' ? '(No description)' : dataFromMap.path.description;
+          this.pathDistance = dataFromMap.stats.distance;
         });
 
       }

@@ -60,9 +60,19 @@ class GeoJson{
    */
   getUncolouredFeatures() {
 
-    const colour = this.plotType === 'route' ? '#FF0000' : getRandomColour();
+    // this approach means all tracks/routes are plotted in the same colour
+    // const colour = this.plotType === 'route' ? '#FF0000' : getRandomColour();
+    // for (let iPath = 0; iPath < this.paths.length; iPath++) {
+    //   for (let iSeg = 0; iSeg < this.paths[iPath].length; iSeg++) {
+    //     this.features.push(this.getGeoJsonFeature(colour, iPath, iSeg));
+    //   }
+    // }
+
+    // this approach means all routes are red; all tracks are different (random) colour
+    let colour;
     for (let iPath = 0; iPath < this.paths.length; iPath++) {
       for (let iSeg = 0; iSeg < this.paths[iPath].length; iSeg++) {
+        colour = this.plotType === 'route' ? '#FF0000' : getRandomColour();
         this.features.push(this.getGeoJsonFeature(colour, iPath, iSeg));
       }
     }

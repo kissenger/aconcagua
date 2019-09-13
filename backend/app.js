@@ -236,11 +236,13 @@ app.get('/create-challenge-from-path/:pathIds', auth.verifyToken, (req, res) => 
   pathIds = req.params.pathIds.split(",");
   getPathsFromIdArray(pathIds, 'route').then( paths => {
 
+    console.log(paths);
     // create a new challenge, save to db and return data to frontend
     routesChallenge = new RoutesChallenge(paths, userId);
 
     MongoChallenges.Challenges.create(routesChallenge.getMongoObject()).then(document => {
       res.status(201).json({geoJson: new GeoJson(document, 'route')});
+      console.log('BYIUVY');
       console.log(document);
 
       // launch matching
