@@ -29,17 +29,20 @@ export class ListComponent implements OnInit, OnDestroy {
   public timer: NodeJS.Timer;
   private pathId: string;
   private listOffset = 0;
-  private isEndOfList = false;
+  private isEndOfList = false; // value is read in the html do dont be tempted to delete
+  private DEBUG = false;
 
   constructor(
     private http: HttpClient,
     private httpService: HttpService,
     private activatedRouter: ActivatedRoute,
     private router: Router,
-    private utils: UtilsService
+    private utils: UtilsService  // pretify date function used in html
     ) {}
 
   ngOnInit() {
+
+    if (this.DEBUG) { console.log('-->list.component.ngOnInit()---------------'); }
 
     this.paramsSubs = this.activatedRouter.params.subscribe(params => {
 
@@ -47,41 +50,62 @@ export class ListComponent implements OnInit, OnDestroy {
       this.pathId = params.id;
 
       this.timer = setInterval( () => {
-        this.highlightActiveRow(<HTMLElement>document.getElementById(this.pathId));
-      }, 100);
+
+        const divHandle = <HTMLElement>document.getElementById(this.pathId);
+        if (this.DEBUG) { console.log('-->list.component.ngOnInit(): divHandle = ', divHandle); }
+        this.highlightActiveRow(divHandle);
+
+      }, 200);
 
     });
 
     this.updateList();
 
-
   } // ngOnInit
 
+
+  /**
+  * Highlights the list item that is being displayed on the map
+  */
   highlightActiveRow(div) {
+    if (this.DEBUG) { console.log('-->list.component.highlightActiveRow()'); }
+
+    // return false if the required div does not exist
     if ( !div ) { return false; }
+
+    // otherwise highlight the div and clear the timer
     div.style.backgroundColor = '#E9E2CB';
     clearInterval(this.timer);
   }
 
+
+  /**
+  * Get list data on component load or request for additional list items
+  */
   updateList() {
 
-    // get list of paths
-    this.httpService.getPathsList(this.pathType, this.listOffset).subscribe( result => {
+    if (this.DEBUG) { console.log('-->list.component.updateList()'); }
 
-      console.log(result);
-      if ( typeof result[0] !== 'undefined' ) {
+    // get list of paths
+    this.httpService.getPathsList(this.pathType, this.listOffset).subscribe( pathsList => {
+
+      if ( typeof pathsList[0] !== 'undefined' ) {
         // query returned data, so process it
 
         // reset content of 'more_div
         document.getElementById('more_div').innerHTML = 'more';
 
         // compile data and confirm if we are at the end of the list yet
-        this.htmlData = this.htmlData.concat(result);
+        this.htmlData = this.htmlData.concat(pathsList);
+        console.log(this.htmlData);
+
         if ( this.htmlData.length === this.htmlData[0].count ) {
           this.isEndOfList = true;
         }
 
         // if id not provided on the url, then use first one in list and re-navigate
+        // this causes the list component to be loaded twice - once to populate the list and once after the required path as been found
+        // IS THERE A BETTER WAY TO DO THIS?
         if ( typeof this.pathId === 'undefined' || this.pathId === '0') {
           this.router.navigate(['paths', this.pathType, this.htmlData[0].pathId]);
         }
@@ -95,6 +119,9 @@ export class ListComponent implements OnInit, OnDestroy {
 
   }
 
+  /**
+  * Request additional items in list
+  */
   onMoreClick() {
   // when the 'more_div' is clicked...
     this.listOffset++;
@@ -102,22 +129,37 @@ export class ListComponent implements OnInit, OnDestroy {
     document.getElementById('more_div').innerHTML = 'fetching...';
   }
 
+
+  /**
+   * Resets list item highlight and requests new map display
+   * @param idFromClick id of path requested
+   */
   onLineClick(idFromClick: string) {
 
-    document.documentElement.style.cursor = 'wait';
-    document.getElementById(this.pathId).style.backgroundColor = '#FFFFFF';
-    document.getElementById(idFromClick).style.backgroundColor = '#E9E2CB';
+    // display on debug only
+    if (this.DEBUG) { console.log('-->list.component.onLineClick()'); }
 
-    this.router.navigate(['paths', this.pathType, idFromClick]);
-    document.documentElement.style.cursor = 'default';
+    if (idFromClick !== this.pathId) {
+      // get handle for current highlighted div and unhighlight --> new highlight will be handled in ngOnInit
+      const oldDivHandle = document.getElementById(this.pathId);
+      if (this.DEBUG) { console.log('-->list.component.onLineClick(): oldDivHandle = ', oldDivHandle); }
+      oldDivHandle.style.backgroundColor = '#FFFFFF';
 
-    // this.httpService.getPathById(this.pathType, idFromClick, true).subscribe( () => {
-    //     this.router.navigate(['paths', this.pathType, idFromClick]);
-    //     document.documentElement.style.cursor = 'default';
-    //   });
+      // navigate to the newly requested path
+      this.router.navigate(['paths', this.pathType, idFromClick]);
+      document.documentElement.style.cursor = 'default';
+    }
+
   }
 
+
+  /**
+   * Actions to do when component is destroyed
+   */
   ngOnDestroy() {
+    if (this.DEBUG) { console.log('-->list.component.ngOnDestroy()'); }
+
+    clearInterval(this.timer);      // cancel the timer used to determine div existance for highlighting
     this.paramsSubs.unsubscribe();
   }
 

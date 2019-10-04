@@ -8,6 +8,7 @@ const pathSchema = mongoose.Schema({
   pathType: {type: String},
   startTime: {type: String},
   category: {type: String},
+  direction: {type: String},
   name: {type: String},   // only defined if usr has entered it
   description: {type: String},
   geometry: {

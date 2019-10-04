@@ -100,7 +100,7 @@ function bearing(p1, p2) {
 
 
 /**
- * Returns bounding box a provided path
+ * Returns bounding box in the form [minLng, minLat, maxLng, maxLat]
  * @param {*} lngLatArray
  */
 function boundingBox(lngLatArray) {

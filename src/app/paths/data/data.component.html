@@ -20,15 +20,15 @@
 
     <div *ngIf="nTabs === 2">
       <div class='menu'>
-        <div class="tab two left" id='left' (click)="menuClick('left')">{{tabNameLeft}}</div>
-        <div class="tab two right" id='right' (click)="menuClick('right')">{{tabNameRight}}</div>
+        <div class="tab two left" id='tab left' (click)="menuClick('left')">{{tabNameLeft}}</div>
+        <div class="tab two right" id='tab right' (click)="menuClick('right')">{{tabNameRight}}</div>
       </div>
 
-      <div [hidden]="activeTab !== 'left'" class="tab-content-left">
+      <div [hidden]="activeTab !== 'tab left'" class="tab-content-left">
           <app-list></app-list>
       </div>
 
-      <div [hidden]="activeTab !== 'right'" class="tab-content-right">
+      <div [hidden]="activeTab !== 'tab right'" class="tab-content-right">
           <app-detail></app-detail>
       </div>
 
@@ -37,13 +37,13 @@
 
     <div *ngIf="nTabs === 3">
       <div class='menu'>
-        <div class="tab three left"  id='left'  (click)="menuClick('left')">  {{tabNameLeft}} </div>
-        <div class="tab three mid"   id='mid'   (click)="menuClick('mid')">   {{tabNameMid}}  </div>
+        <div class="tab three left"  id='tab left'  (click)="menuClick('left')">  {{tabNameLeft}} </div>
+        <div class="tab three mid"   id='tab mid'   (click)="menuClick('mid')">   {{tabNameMid}}  </div>
         <div
-        class="tab three right"
-        [ngClass]="notificationsWaiting ? 'notices' : 'no-notices'"
-        id='right'
-        (click)="menuClick('right')"> {{tabNameRight}}</div>
+          class="tab three right"
+          [ngClass]="notificationsWaiting ? 'notices' : 'no-notices'"
+          id='tab right'
+          (click)="menuClick('right')"> {{tabNameRight}}</div>
 
       </div>
 

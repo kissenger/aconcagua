@@ -19,6 +19,8 @@ import { Observable } from 'rxjs';
 import { markParentViewsForCheck } from '@angular/core/src/view/util';
 import { map } from 'rxjs/operators';
 import { registerModuleFactory } from '@angular/core/src/linker/ng_module_factory_loader';
+import { resolve } from 'dns';
+import { UtilsService } from 'src/app/utils.service';
 
 @Component({
   selector: 'app-map',
@@ -46,7 +48,7 @@ export class MapComponent implements OnInit, OnDestroy {
   // google map instances
   private map: google.maps.Map;
   private polyLine: google.maps.Polyline;
-  private elevator: google.maps.ElevationService;
+  // private elevator: google.maps.ElevationService;
 
   // challenges
   private challengeType: string;
@@ -74,6 +76,8 @@ export class MapComponent implements OnInit, OnDestroy {
   private timer: NodeJS.Timer;
 
   private feedService: any;
+  // private DEBUG = false;
+  private DEBUG = true;
 
   constructor(
     private httpService: HttpService,
@@ -83,19 +87,21 @@ export class MapComponent implements OnInit, OnDestroy {
     private router: Router,
     private activatedRouter: ActivatedRoute,
     private controls: Controls,
-    private controlFunctions: ControlFunctions
+    private controlFunctions: ControlFunctions,
+    private  utilService: UtilsService
     ) {
       this.router = router;
     }
 
   ngOnInit() {
+    if (this.DEBUG) { console.log('-->map.component.ngOnInit()^^^^^^^^^^^^^^^^^'); }
 
-  /**
-   * Listen for changes to URL parameters
-   * Determine page type requested and handle flow accordingly
-   * Request menu buttons and other controls
-   * Call load map function
-   */
+    /**
+     * Listen for changes to URL parameters
+     * Determine page type requested and handle flow accordingly
+     * Request menu buttons and other controls
+     * Call load map function
+     */
 
     // List for changes in url params
     this.paramSubs = this.activatedRouter.params.subscribe(params => {
@@ -122,7 +128,12 @@ export class MapComponent implements OnInit, OnDestroy {
       }
 
       // now we know page type, get data and call loadMap()
-      if ( this.pageType === 'review') {
+      console.log(this.pageType);
+      if ( this.pageType === 'reload' ) {
+        console.log('hekpove');
+        this.router.navigate(['paths', this.pathType, this.pathId]);
+
+      } else if ( this.pageType === 'review') {
         this.path = this.dataService.getStoredNewPath();
         this.pathId = this.path.properties.pathId;
         this.loadMap();
@@ -138,11 +149,11 @@ export class MapComponent implements OnInit, OnDestroy {
             this.loadMap();
           } else {
             this.httpService.getPathById(this.pathType, this.pathId).subscribe( (result) => {
-              console.log(result);
+              // console.log(result);
               this.path = result.geoJson;
 
               if ( this.pathType === 'challenge' ) {
-                console.log(result);
+                // console.log(result);
                 this.binary = result.geoBinary;
                 this.contour = result.geoContour;
                 this.feedService = this.dataService.newNotification.subscribe( (data) => {
@@ -151,7 +162,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
                 // **NEED TO DETECT IF THIS IS A NEWLY UPLOADED CHALLENGE, IF SO DONT LOAD TRACKS (YET)
                 this.httpService.getMatchedTracks(this.pathId).subscribe( (tracks) => {
-  console.log(tracks);
+  // console.log(tracks);
                   this.tracks = tracks.geoTracks;
                   // console.log(this.tracks);
 
@@ -182,6 +193,7 @@ export class MapComponent implements OnInit, OnDestroy {
      */
     function getPageType(id: String, page: String) {
       if ( id === '-1' && typeof page === 'undefined' ) { return 'review'; }
+      if ( page === 'reload' ) { return 'reload'; }
       if ( id === 'load-single') { return 'load-single'; }
       if ( id === 'load-batch' ) { return 'load-batch'; }
       if ( page === 'create' ) { return 'create'; }
@@ -193,9 +205,11 @@ export class MapComponent implements OnInit, OnDestroy {
   loadMap() {
 
     // console.log(this.pageType);
-    console.log(this.path);
-    console.log(this.binary);
-    console.log(this.contour);
+    if (this.DEBUG) {
+      console.log('-->map.component.loadMap(): this.path = ', this.path);
+      console.log('-->map.component.loadMap(): this.binary = ', this.binary);
+      console.log('-->map.component.loadMap(): this.contour = ', this.contour);
+    }
 
     this.map = new google.maps.Map(document.getElementById('map'), this.initData.getMapOptions(this.pageType));
 
@@ -218,11 +232,47 @@ export class MapComponent implements OnInit, OnDestroy {
         return featureStyle;
       });
 
+      // put a start and finish marker on each displayed route
+      const markerArray = [];
+      this.path.features.forEach((feature) => {
+        markerArray.push(feature.geometry.coordinates[0]);
+        if ( this.path.properties.category !== 'Circular' ) {
+          if (feature.geometry.coordinates[0] !== feature.geometry.coordinates[feature.geometry.coordinates.length - 1]) {
+            markerArray.push(feature.geometry.coordinates[feature.geometry.coordinates.length - 1]);
+          }
+        }
+      });
+
+      let label = '@';
+      markerArray.forEach( coords => {
+        label = this.utilService.nextLetter(label);
+        const marker = new google.maps.Marker({
+          position: new google.maps.LatLng(coords[1], coords[0]),
+          map: this.map,
+          label: label
+        });
+      });
+
+
+
+
       // TODO - DATA FLOWS NEED REVIEWING - THIS CAN BE IMPROVED
+      // const emitData = {
+      //   path: this.path.properties,
+      //   pathFeatures: this.path.features,
+      //   match: this.binary ? this.binary.properties : 0
+      // };
+      // if (this.DEBUG) { console.log('map.component.loapMap(): emitData = ', emitData); }
+
+      // this.dataService.fromMapToData.emit(emitData);
+      // this.dataService.storeData(emitData);
+
       const emitData = {
-        path: this.path.properties,
+        path: this.path,
         match: this.binary ? this.binary.properties : 0
       };
+      if (this.DEBUG) { console.log('map.component.loapMap(): emitData = ', emitData); }
+
       this.dataService.fromMapToData.emit(emitData);
       this.dataService.storeData(emitData);
 
@@ -248,7 +298,9 @@ export class MapComponent implements OnInit, OnDestroy {
           }
 
           this.addToPath(polyPath, destination).then( (newPath) => {
+            console.log(this.elevArray);
             this.dataService.fromCreateToDetail.emit(
+
               this.geoService.pathStats(newPath.getArray(), this.elevArray)
             );
           });
@@ -282,59 +334,67 @@ export class MapComponent implements OnInit, OnDestroy {
    */
   private addToPath(path: google.maps.MVCArray<google.maps.LatLng>, dest: google.maps.LatLng) {
 
-    return new Promise<google.maps.MVCArray<google.maps.LatLng>>( (res, rej) => {
+    return new Promise<google.maps.MVCArray<google.maps.LatLng>>( (resolveOuterPromise, rejectOuterPromise) => {
 
       const snapCheckbox = <HTMLInputElement>document.getElementById('inputRoad Snap');
+      const simplifyCheckbox = <HTMLInputElement>document.getElementById('inputAuto Simplify');
 
       if ( snapCheckbox.checked === false || path.getLength() === 0 ) {
 
-        path.push(dest);
-        this.getElevation([dest]).then( (elevs) => {
-          this.elevArray.push(elevs);
-          res(path);
+        // dont snap to roads
+        this.pushPath(path, new google.maps.MVCArray([dest])).then( updatedPath => {
+          resolveOuterPromise(updatedPath);
         });
-
 
       } else {
 
+        // do snap to roads
+        // get list of snapped coordinates from google
         this.geoService.snapToRoad(path.getAt(path.getLength() - 1), dest)
-          .then( (snappedPath) => {
-            snappedPath.map( (p) => path.push(p) );
-            this.getElevation(snappedPath).then( (elevs) => {
-              this.elevArray.push(elevs);
-              res(path);
-            });
+          .then( (result) => {
+            const newSegment = new google.maps.MVCArray(result);
 
+            if ( simplifyCheckbox.checked ) {
+              // auto simplify is on, so need to send to backend for a simplified version of path
+              // this line converts MVCArray to JSON which is needed for the backend to parse
+              const geoPath = this.geoService.polylineToJson(newSegment, []);
+              this.httpService.simplifyPath(geoPath).subscribe( (newSegmentSimplified) => {
+                this.pushPath(path, this.geoService.coordsToMVCArray(newSegmentSimplified.lngLat)).then( updatedPath => {
+                    resolveOuterPromise(updatedPath);
+                });
+
+              });
+
+            } else {
+              this.pushPath(path, newSegment).then( updatedPath => {
+                resolveOuterPromise(updatedPath);
+              });
+            }
           });
-
       }
+
     });
   }
 
   /**
-   * provides array of elevations for provided list of points
-   * @param path array of google.maps.latlng instances
-   * @returns array of elevations at provided points
+   * push new segment onto existing path
+   * @param oldPath is the existing polyline
+   * @param newSeg is the MVCArray defining the new segment to add to the path
+   * @returns MVCArray defining new lengthened path
    */
-  private getElevation(path: Array<google.maps.LatLng>) {
+  private pushPath(oldPath: google.maps.MVCArray<google.maps.LatLng>, newSeg: google.maps.MVCArray<google.maps.LatLng>) {
 
-    return new Promise<Array<Number>>( (res, rej) => {
+    return new Promise<google.maps.MVCArray<google.maps.LatLng>>( (res, rej) => {
 
-      this.elevator = new google.maps.ElevationService;
-      this.elevator.getElevationForLocations(
-        {'locations': path},
-        (elevResults, status) => {
-          if (status === google.maps.ElevationStatus.OK) {
-            if (elevResults[0]) {
-              res(elevResults.map(e => e.elevation));
-            }
-          }
-        }
-      );
+      newSeg.getArray().forEach( p => oldPath.push(p) );
+      this.geoService.getElevation(newSeg).then( (elevs) => {
+        this.elevArray.push(elevs);
+        res(oldPath);
+      });
 
     });
-
   }
+
 
   /**
    * clear created path from map and reset all variables
@@ -360,7 +420,8 @@ export class MapComponent implements OnInit, OnDestroy {
 
     const path = this.polyLine.getPath();
     const undoLength = this.elevArray[this.elevArray.length - 1].length;
-
+    console.log(path);
+    console.log(undoLength);
     if (path.getLength() > 1) {
 
       for (let i = 0; i < undoLength; i++) { path.pop(); }
@@ -410,7 +471,7 @@ export class MapComponent implements OnInit, OnDestroy {
   // addToChallenges()      { this.controlFunctions.addToChallenges(this.pathId); }
   deletePath()           { this.controlFunctions.deletePath(this.pathType, this.pathId);   }
   createNewPath()        { this.controlFunctions.createNewPath(this.pathType, this.pathId);   }
-  saveCreatedPath()      { this.controlFunctions.saveCreatedPath(this.pathType, this.polyLine.getPath());   }
+  saveCreatedPath()      { this.controlFunctions.saveCreatedPath(this.pathType, this.polyLine.getPath(), this.elevArray);   }
   exportPathToFile()     {
     this.httpService.exportPath(this.pathType, this.pathId).subscribe( (r) => {
       window.location.href = 'http://localhost:3000/download';
@@ -464,9 +525,9 @@ export class MapComponent implements OnInit, OnDestroy {
     this.map.addListener('click', (event) => {
       const navigate = clickBounds.addClick(event.latLng);
       if (navigate) {
-        console.log('navigate');
+        // console.log('navigate');
         this.httpService.getOpenStreetMapData(navigate).subscribe( (result) => {
-          console.log(result.geoJson);
+          // console.log(result.geoJson);
           this.dataService.storeNewPath(result.geoJson);
           this.router.navigate(['paths', this.pathType, '-1']);
 
@@ -631,7 +692,7 @@ export class MapComponent implements OnInit, OnDestroy {
         */
       private navigate() {
         if ( this.markers[1] && this.markers[1]['isClicked'] ) {
-          console.log('navigate');
+         // console.log('navigate');
         }
       }
 
@@ -863,7 +924,7 @@ export class MapComponent implements OnInit, OnDestroy {
 
   radioClick() {
 
-    console.log('click');
+    // console.log('click');
 
     const r = <HTMLInputElement>document.getElementById('inputRoute');
     const b = <HTMLInputElement>document.getElementById('inputBinary');
@@ -931,7 +992,7 @@ onFilePickedImport(event: Event, type: String) {
       this.httpService.importTracks(fileData, 'batch').subscribe( (a) => {
 
         returnCount++;
-        console.log('file: ' + returnCount + ' of ' + numberOfFiles);
+        // console.log('file: ' + returnCount + ' of ' + numberOfFiles);
 
         if ( returnCount === numberOfFiles ) {
           // had back the number of files sent
@@ -961,7 +1022,7 @@ onFilePickedImport(event: Event, type: String) {
  */
 
   ngOnDestroy() {
-    console.log('unsubscribe from paramSub');
+    if (this.DEBUG) { console.log('-->map.component.ngOnDestroy()'); }
     this.paramSubs.unsubscribe();
   }
 

@@ -1,31 +1,30 @@
-div {
-    border: 0px solid red;
 
+
+.image {
+  width: 175px;
 }
 
-.upper-gap {
-    margin: 5px 0px 0px 0px;
-}
-
+/* navigtaion bar */
 .navbar{
-    background-color: transparent;
-    border: 0px
+  margin: 0px 0px 0px 0px;
+  padding: 10px 0px 10px 0px;
+  background-color: white;
+  border-top: 1px gainsboro solid;
 }
 
-.navbar-brand{
-    color: black;
-    font-size: 34px;
-    opacity: 1;
+.navbar-default {
+  border: 0px;
 }
 
-hr.hr-navbar {
-    margin: 5px 15px 0px 0px;
-    opacity: 1;
+/* navigation buttons */
+.navbar-nav li a {
+  --ts-green: #83964B;
+  --ts-brown: #523209;
+  color: var(--ts-green);
+  /* color: green; */
+  font-size: 20px;
+  opacity: 1;
+  /* margin-top: 15px; */
+  border: 0px gainsboro solid;
 }
 
-.navbar-nav > li > a {
-    color: black;
-    font-size: 20px;
-    opacity: 1;
-    /* border: 1px white solid; */
-}

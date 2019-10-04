@@ -1,157 +1,4 @@
-/**
- *
- * This file contains functions for processing GPS data
- *
- */
-
-/**
- * Define class object to hold a track or route point
- * Properties:
- *   index [number]
- *   latLng [number, number]: lat/long number pair
- *   elev [number]
- *   timeStamp [string]
- *   heartRate [number]
- *   cadence [number]
- */
-class Point {
-  constructor(index, latLng, elev, timeStamp, heartRate, cadence) {
-    this.index = index;
-    this.latLng = latLng;
-    this.elev = elev;
-    this.timeStamp = timeStamp;
-    this.heartRate = heartRate;
-    this.cadence = cadence;
-  }
-};
-
-/**
- * Define class object to hold the path (route or track) of interest.
- * Properties:
- *   name [string]
- *   type [string]: options "route" or "track"
- *   points [array]: array of Points [point1, point2, point 3, ... point n]
- * Methods:
- *   stats: outputs hash array with required path statistics eg path distance
- */
-class Path {
-
-  constructor(name, type, points) {
-    this.name = name;
-    this.type = type;
-    this.points = points;
-  }
-
-  category() {
-
-    const matchDistance = 25;  // in m, if points are this close then consider as coincident
-    const buff = 50;           // number of points ahead to skip in matching algorithm
-    const pcThreshUpper = 90;  // % above which to consider at out and back
-    const pcThreshLower = 10;  // % below which to consider as one way or loop
-
-    let nm = 0, np = this.points.length;
-    let isEndsAtStart = false;
-    let category = '';
-
-    // loop through points and match each point against remaining points in path; count matches
-    for ( let i = 0; i < np - buff; i++ ) {
-      for ( let j = i + buff; j < np; j++ ) {
-        const d = p2p(this.points[i].latLng, this.points[j].latLng);
-        if ( d < matchDistance ) {
-          nm++;
-          break;
-        }
-      }
-    }
-
-    // determine whether 1st and last points are within tolerance
-    const d = p2p(this.points[0].latLng, this.points[np - 1].latLng);
-    if ( d < matchDistance * 10 ) isEndsAtStart = true;
-
-    // caculate proportion of points that are matched
-    // factor of 2 accounts for the fact that only a max 1/2 of points can be matched with algorithm
-    const pcShared = nm / np * 200;
-
-    // determine path category
-    if ( isEndsAtStart ) {
-
-      if ( pcShared > pcThreshUpper ) category = 'Out and back'
-      else if (pcShared < pcThreshLower ) category = 'Circular'
-      else category = 'Hybrid'
-
-    } else {
-
-      if ( pcShared > pcThreshUpper ) category = 'Out and back'
-      else if (pcShared < pcThreshLower ) category = 'One way'
-      else category = 'Hybrid'
-
-    }
-
-    return category;
-  }
-
-  getTimeArray() {
-    let t = [];
-    let startTime = new Date (this.points[0].timeStamp);
-    this.points.forEach( (p, i) => {
-      const thisTime = new Date (p.timeStamp);
-      t.push(Math.ceil((thisTime-startTime) / 1000));
-    })
-    return t;
-  }
-  // Stats method on the Path class
-
-  stats () {
-
-    let asc = 0, dsc = 0;
-    let cumDist = 0, maxDist = 0
-    let minLat = 180, maxLat = -180, minLng = 180, maxLng = -180;
-
-    // const nSmooth = 5; //number of points over which to smooth gradient
-
-    this.points.forEach( (point, index) => {
-
-      // Calculate statistics
-      // skip the first point and compare this point to the previous one
-      if (index != 0) {
-
-        // Cumulative distance
-        let dist = p2p(this.points[index-1].latLng, this.points[index].latLng);
-        cumDist += dist;
-        maxDist = dist > maxDist ? dist : maxDist;
-
-        // Calculate ascent and descent if elevantion data is available
-        if ( this.points[index].elev ) {
-          let delta = this.points[index].elev - this.points[index-1].elev;
-          asc = delta > 0 ? asc + delta : asc;
-          dsc = delta > 0 ? dsc + delta : dsc;
-        }
-
-      } // end if
-
-      // Determine max lat/long for bounding box
-      minLat = point.latLng[0] < minLat ? point.latLng[0] : minLat;
-      minLng = point.latLng[1] < minLng ? point.latLng[1] : minLng;
-      maxLat = point.latLng[0] > maxLat ? point.latLng[0] : maxLat;
-      maxLng = point.latLng[1] > maxLng ? point.latLng[1] : maxLng;
-
-    });
-
-    const startTime = new Date (this.points[0].timeStamp);
-    const endTime = new Date (this.points[this.points.length-1].timeStamp);
-    const dur = Math.ceil((endTime-startTime) / 1000);
-
-    return {duration: dur,
-            totalDistance: cumDist,
-            totalAscent: asc,
-            totalDescent: dsc,
-            maxDistBtwnTwoPoints: maxDist,
-            aveDistBtwnTwoPoints: cumDist/(this.points.length-1),
-            boundingBoxJson: [ [[minLng, minLat],[maxLng, minLat],[maxLng, maxLat],[minLng, maxLat],[minLng, minLat]] ],
-            boundingBox: [minLng, minLat, maxLng, maxLat]
-          };
-  };
-};
+const Point = require('../_Point.js').Point;
 
 /**
  * function p2p
@@ -167,61 +14,64 @@ class Path {
  *
  * https://www.movable-type.co.uk/scripts/latlong.html
  * can be sped up: https://stackoverflow.com/questions/27928
+ *
  */
+function p2p(p1, p2) {
 
-function p2p(lngLat1, lngLat2) {
+  if ( !(p1 instanceof Point) || !(p2 instanceof Point) ) {
+    console.log(p1);
+    console.log(p1 instanceof Point);
+    console.log(p1 instanceof Point);
+    console.log("Error from p2p: arguments should be of Point class");
+    return 0;
+  }
 
   const R = 6378.137;     // radius of earth
 
+  const lat1 = degs2rads(p1.lat);
+  const lat2 = degs2rads(p2.lat);
+  const lng1 = degs2rads(p1.lng);
+  const lng2 = degs2rads(p2.lng);
 
-  var lat1 = degs2Rads(lngLat1[1]);
-  var lng1 = degs2Rads(lngLat1[0]);
-  var lat2 = degs2Rads(lngLat2[1]);
-  var lng2 = degs2Rads(lngLat2[0]);
+  const dlat = lat1 - lat2;
+  const dlng = lng1 - lng2;
 
-	var dlat = lat1 - lat2;
-  var dlng = lng1 - lng2;
+  const a = (Math.sin(dlat/2.0) ** 2.0 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlng/2.0) ** 2.0) ** 0.5;
+  const c = 2.0 * Math.asin(a);
 
-	var a = (Math.sin(dlat/2.0) ** 2.0 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlng/2.0) ** 2.0) ** 0.5;
-  c = 2.0 * Math.asin(a);
-  d = R * c * 1000.0;  // distance in metres
-
-  // console.log('@@ ' + lngLat1 + ', ' + lngLat2 + ', ' + d + ' @@')
-
-  return d;
+  return d = R * c * 1000.0;  // distance in metres
 
 }
 
+function degs2rads(degs) {
+  return degs * Math.PI / 180.0;
+};
+
+
 /**
-* ---------------------------------------------------
 * returns distance in meters between a line and a point
-* ---------------------------------------------------
-* latLng1 is lat/lng of point 1 (line start) in decimal degrees
-* latLng2 is lat/lng of point 2 (line end) in decimal degrees
-* latLng3 is lat/lng of point 3 (point) in decimal degrees
-*---------------------------------------------------
+*
+* @param {Point} p1 lng/lat of line start in decimal degrees as instance of Point class
+* @param {Point} p2 lng/lat of line end in decimal degrees as instance of Point class
+* @param {Point} p3 lng/lat of mid-point in decimal degrees as instance of Point class
+*
 * https://www.movable-type.co.uk/scripts/latlong.html
-*---------------------------------------------------
 */
 
-function p2l(latLng1, latLng2, latLng3) {
+function p2l(p1, p2, p3) {
 
-  const d13 = p2p(latLng1, latLng3) / 1000.0;
-  const brg12 = bearing(latLng1, latLng2);
-  const brg13 = bearing(latLng1, latLng3);
+  if ( !(p1 instanceof Point) || !(p2 instanceof Point) || !(p3 instanceof Point)) {
+    console.log("Error from p2l: arguments should be of Points class");
+    return 0;
+  }
+
+  const d13 = p2p(p1, p3) / 1000.0;
+  const brg12 = bearing(p1, p2);
+  const brg13 = bearing(p1, p3);
 
   return Math.asin( Math.sin( d13/6378.137 ) * Math.sin( brg13-brg12 ) ) * 6378.137 * 1000.0;
 
 }
-
-/**
- * function degreesToRadians
- * converts dgress to radians!!
- */
-
-function degs2Rads(degrees) {
-  return degrees * Math.PI / 180.0;
-};
 
 /**
  * ---------------------------------------------------
@@ -233,12 +83,17 @@ function degs2Rads(degrees) {
  * https://www.movable-type.co.uk/scripts/latlong.html
  *---------------------------------------------------
  */
-function bearing(latLng1, latLng2) {
+function bearing(p1, p2) {
 
-  const lat1 = degs2Rads(latLng1[0]);
-  const lng1 = degs2Rads(latLng1[1]);
-  const lat2 = degs2Rads(latLng2[0]);
-  const lng2 = degs2Rads(latLng2[1]);
+  if ( !(p1 instanceof Point) || !(p2 instanceof Point) ) {
+    console.log("Error from bearing: arguments should be of Points class");
+    return 0;
+  }
+
+  const lat1 = degs2rads(p1.lat);
+  const lat2 = degs2rads(p2.lat);
+  const lng1 = degs2rads(p1.lng);
+  const lng2 = degs2rads(p2.lng);
 
 	x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2)* Math.cos(lng2 - lng1)
 	y = Math.sin(lng2 - lng1) * Math.cos(lat2)
@@ -248,13 +103,22 @@ function bearing(latLng1, latLng2) {
 }
 
 
+function outerBoundingBox(arrayOfBoundingBoxes) {
+  let outerBbox = [ 180, 90, -180, -90 ];
+  arrayOfBoundingBoxes.forEach( (x) => {
+    outerBbox[0] = x[0] < outerBbox[0] ? x[0] : outerBbox[0];
+    outerBbox[1] = x[1] < outerBbox[1] ? x[1] : outerBbox[1];
+    outerBbox[2] = x[2] > outerBbox[2] ? x[2] : outerBbox[2];
+    outerBbox[3] = x[3] > outerBbox[3] ? x[3] : outerBbox[3];
+  })
+  return outerBoundingbox;
+}
+
+
+
 module.exports = {
   p2p,
   p2l,
   bearing,
-  Point,
-  Path,
-  simplifyPath
+  outerBoundingBox
 };
-
-

@@ -36,4 +36,9 @@ export class UtilsService {
     return outp;
   }
 
+  nextLetter(c: String) {
+    return String.fromCharCode(c.charCodeAt(0) + 1);
+  }
+
+
 }

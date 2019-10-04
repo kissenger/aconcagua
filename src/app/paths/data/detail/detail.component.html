@@ -1,44 +1,60 @@
 <div *ngIf="isData" class='container'>
-  Distance: {{pathStats.distance/1000 | number: '1.2-2'}}km<br>
+  Distance: {{pathProps.distance/1000 | number: '1.2-2'}}km<br>
   <div *ngIf="showTime">
-    Duration: {{utils.formatDuration(pathStats.duration)}}<br>
-    Moving Time: {{utils.formatDuration(pathStats.movingTime)}}<br>
-    Average Pace: {{pathStats.pace | number: '1.1-1'}} min/km<br>
+    Duration: {{utils.formatDuration(pathProps.duration)}}<br>
+    Moving Time: {{utils.formatDuration(pathProps.movingTime)}}<br>
+    Average Pace: {{pathProps.pace | number: '1.1-1'}} min/km<br>
   </div>
   <hr>
 
   <div *ngIf="showMatchStats">
     Match Distance: {{matchStats.matchDistance/1000 | number: '1.2-2'}}km<br>
-    Completed: {{(matchStats.matchDistance/pathStats.distance*100) | number: '1.1-1'}}%<br>
+    Completed: {{(matchStats.matchDistance/pathProps.distance*100) | number: '1.1-1'}}%<br>
     Number of visits: {{matchStats.nVisits}}<br>
     <hr>
   </div>
 
+  <!-- Elevation data block -->
+  <div *ngIf="showElev; then showData else dontShowData"></div>
+    <ng-template #showData>
+      Ascent: {{pathProps.ascent | number: '1.0-0'}}m<br>
+      Descent: {{pathProps.descent | number: '1.0-0'}}m<br>
+      Lumpiness: {{ pathProps.ascent / pathProps.distance * 1000 | number: '1.1-1'}}m/km
+      <p>
 
-  <div *ngIf="showElev">
-    Ascent: {{pathStats.ascent | number: '1.0-0'}}m<br>
-    Descent: {{pathStats.descent | number: '1.0-0'}}m<br>
-    Lumpiness: {{ pathStats.ascent / pathStats.distance * 1000 | number: '1.1-1'}}m/km
-    <p>
-    <table class='data'>
-      <tr>
-        <th>Height Gain<br>[m]</th>
-        <th>Grad Ave<br>[%]</th>
-        <th>Grad Max<br>[%]</th>
-        <th *ngIf="showTime">Pace<br>[min/km]</th>
-        <th *ngIf="showTime">ascRate<br>[m/min]</th>
-      </tr>
-      <tr *ngFor="let row of pathStats.hills">
-        <td>{{row.dHeight | number: '1.0-0'}}</td>
-        <td>{{row.gradient.ave | number: '1.0-1'}}</td>
-        <td>{{row.gradient.max | number: '1.0-1'}}</td>
-        <td *ngIf="showTime">{{row.pace | number: '1.0-1'}}</td>
-        <td *ngIf="showTime">{{row.ascRate | number: '1.0-1'}}</td>
-      </tr>
-    </table>
+      <!-- Hills table - only show if there is data -->
+      <div *ngIf="showHillsTable; then showTable else dontShowTable"></div>
+        <ng-template #showTable>
+          <table class='data'>
+            <tr>
+              <th>Height Gain<br>[m]</th>
+              <th>Grad Ave<br>[%]</th>
+              <th>Grad Max<br>[%]</th>
+              <th *ngIf="showTime">Pace<br>[min/km]</th>
+              <th *ngIf="showTime">ascRate<br>[m/min]</th>
+            </tr>
+            <tr *ngFor="let row of pathProps.hills">
+              <td>{{row.dHeight | number: '1.0-0'}}</td>
+              <td>{{row.gradient.ave | number: '1.0-1'}}</td>
+              <td>{{row.gradient.max | number: '1.0-1'}}</td>
+              <td *ngIf="showTime">{{row.pace | number: '1.0-1'}}</td>
+              <td *ngIf="showTime">{{row.ascRate | number: '1.0-1'}}</td>
+            </tr>
+          </table>
+        </ng-template>
+        <ng-template #dontShowTable>
+          No hills to tabulate
+        </ng-template>
+      <!-- End of hills table -->
+
+    </ng-template>
+    <ng-template #dontShowData>
+      <div class="more" (click)="onGetElevClick()" id="get_elev_div">No elevation data (click to fetch)</div>
+    </ng-template>
     <hr>
-  </div>
+  <!-- End of Elevation Block-->
 
+  <!-- Time data block -->
   <div *ngIf="showTime">
     <p>
 
@@ -48,10 +64,18 @@
         <th class='width1'>km</th>
         <th class='width2'>pace<br>[min/km]</th>
       </tr>
-      <tr *ngFor="let row of pathStats.kmSplits; let i = index">
+      <tr *ngFor="let row of pathProps.kmSplits; let i = index">
         <td>{{i+1}}</td>
         <td>{{row[1] | number: '1.0-1'}}</td>
       </tr>
     </table>
   </div>
+
+
+  <div>
+    <div class="more" (click)="onReverseRouteClick()" id="reverse_route_div">Reverse Route</div>
+    <hr>
+  </div>
+
+
 </div>

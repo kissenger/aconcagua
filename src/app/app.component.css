@@ -1,4 +1,9 @@
 
+:root {
+  --ts-brown: #523209;
+  --ts-green: #83964B;
+}
+
 .outer-box {
   min-height: 100vh;
   overflow: hidden;
@@ -10,7 +15,11 @@
 }
 
 .header {
-  border: 0px red dashed;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: var(--ts-green);
+  display: inline-block;
+  width: 100%;
  }
 
 .content-box {

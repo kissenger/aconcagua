@@ -5,6 +5,9 @@ const multer = require('multer');
 const bodyParser = require('body-parser');
 const request = require('request');
 
+const DEBUG = true;
+// const DEBUG = false;
+
 // Local functions
 const Match = require('./_Match.js').Match;
 const Notification = require('./_Notification.js').Notification;
@@ -98,6 +101,116 @@ var upload = multer({
 });
 
 
+/**
+ *
+ *
+ */
+app.post('/add-elev-to-path/:type/:id', auth.verifyToken, (req, res) => {
+
+  if (DEBUG) { console.log('-->add-elev-to-path: req.body = ', req.body) };
+  if (DEBUG) { console.log('-->add-elev-to-path: req.params = ', req.params) };
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  // construct query based on incoming payload
+  let filter = {_id: req.params.id,  userId: userId};
+  // let update = {'params.elev': req.body};
+  let newElevs = req.body;
+
+  // query the database tp find the current entry that needs to be modified - we'll take the data we need
+  getPathDocFromId(req.params.id, req.params.type).then( document => {
+    if (DEBUG) {
+      console.log(document);
+    }
+
+    // we need to create a new instance which will replace the current db entry (so that path can be processed with new data)
+    if ( req.params.type === 'track' ) {
+      var path = new Track(document.name, document.description, document.geometry.coordinates, newElevs);
+    } else {
+      var path = new Route(document.name, document.description, document.geometry.coordinates, newElevs);
+    }
+
+    // replace the entry in the db and tell the front end that we're done
+    const mPath = path.mongoFormat(req.userId, true);
+    mongoModel(req.params.type)
+      .replaceOne(filter, mPath, {writeConcern: {j: true}})
+      .then( () => {
+
+        res.status(201).json({geoJson: new GeoJson(mPath, 'route')});
+        // respond to the front end
+        // res.status(201).json( {'path': mPath} );
+
+        // recheck db entry if needed
+        if (DEBUG) {
+          getPathDocFromId(req.params.id, req.params.type).then( document => {
+            console.log('--------------------');
+            console.log(document);
+            console.log('--------------------');
+          });
+        }
+
+      } );
+
+  });
+
+
+});
+
+
+
+
+/**
+ *
+ *
+ */
+app.get('/reverse-path/:type/:id', auth.verifyToken, (req, res) => {
+
+  if (DEBUG) { console.log('-->add-elev-to-path: req.params.type = ', req.params.type) };
+  if (DEBUG) { console.log('-->add-elev-to-path: req.params.id = ', req.params.id) };
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  // construct query based on incoming payload
+  let filter = {_id: req.params.id,  userId: userId};
+
+  // query the database tp find the current entry that needs to be modified - we'll take the data we need
+  getPathDocFromId(req.params.id, req.params.type).then( document => {
+
+    // get the coordinates and reverse them
+    newCoords = document.geometry.coordinates.reverse();
+    newElevs = document.params.elev.reverse();
+
+    // we need to create a new instance which will replace the current db entry (so that path can be processed with new data)
+    var newPath = new Route(document.name, document.description, newCoords, newElevs);
+
+    // replace the entry in the db and tell the front end that we're done
+    const mPath = newPath.mongoFormat(req.userId, true);
+    mongoModel(req.params.type)
+      .replaceOne(filter, mPath, {writeConcern: {j: true}})
+      .then( () => {
+
+        // make a geoJSON object and inject the pathID
+        newPath = {geoJson: new GeoJson(mPath, 'route')};
+        newPath.geoJson.properties['pathId'] = req.params.id
+
+        // and return to the front end
+        res.status(201).json(newPath);
+
+      });
+  });
+
+
+});
+
+
 
 
 
@@ -126,7 +239,7 @@ app.post('/get-osm-data/', auth.verifyToken, (req, res) => {
 
       const temp = parseOSM(body, boundingBox); // get array of lngLats
       pathCloud = new PathCloud(temp, userId);
-      // console.log(pathCloud.getMongoObject());
+
       MongoChallenges.Challenges.create(pathCloud.getMongoObject()).then(documents => {
         res.status(201).json({geoJson: new GeoJson(documents, 'route')});
       });
@@ -135,6 +248,31 @@ app.post('/get-osm-data/', auth.verifyToken, (req, res) => {
   });
 
 });
+
+
+
+
+/*****************************************************************
+ *
+ *  Simplify a path provided by the front end, and return it.
+ *  Does this by simply creating a route object on the as this
+ *  automatically invokes simplification algorithm
+ *
+ *****************************************************************/
+app.post('/simplify-path/', auth.verifyToken, (req, res) => {
+
+  if (DEBUG) { console.log('-->simplify-path: req.body = ', req.body); }
+
+  // ensure user is authorised
+  const userId = req.userId;
+  if ( !userId ) {
+    res.status(401).send('Unauthorised');
+  }
+
+  var path = new Route('', '', req.body.geometry.coordinates, []);
+  res.status(201).json(path);
+
+})
 
 
 /*****************************************************************
@@ -242,8 +380,6 @@ app.get('/create-challenge-from-path/:pathIds', auth.verifyToken, (req, res) => 
 
     MongoChallenges.Challenges.create(routesChallenge.getMongoObject()).then(document => {
       res.status(201).json({geoJson: new GeoJson(document, 'route')});
-      console.log('BYIUVY');
-      console.log(document);
 
       // launch matching
       newMatchFromChallengeId(document._id).then( (newMatch) => {
@@ -451,6 +587,10 @@ app.get('/delete-path/:type/:id', auth.verifyToken, (req, res) => {
 });
 
 
+
+
+
+
 /*****************************************************************
  *  Retrieve a list of paths from database
  *****************************************************************/
@@ -462,7 +602,7 @@ app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
    *  stats
    *  name
    *  */
-  console.log('>> get-paths-list');
+  // console.log('>> get-paths-list');
   const LIMIT = 50 //number of items to return in one query
 
   // ensure user is authorised
@@ -473,7 +613,7 @@ app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
 
   // get the appropriate model and setup query
   let condition = {isSaved: true, userId: userId};
-  let filter = {stats: 1, name: 1, pathTupe: 1, category: 1};
+  let filter = {stats: 1, name: 1, pathType: 1, category: 1};
   let sort = {};
 
   if ( req.params.type === 'track' ) {
@@ -486,9 +626,11 @@ app.get('/get-paths-list/:type/:offset', auth.verifyToken, (req, res) => {
 
   // execute the query and return result to front-end
   mongoModel(req.params.type).countDocuments(condition).then( (count) => {
+    console.log(req.params.type);
     mongoModel(req.params.type)
       .find(condition, filter).sort(sort).limit(LIMIT).skip(LIMIT*(req.params.offset))
       .then(documents => {
+        console.log(new ListData(documents, count));
         res.status(201).json(new ListData(documents, count))
       });
   })
@@ -611,10 +753,11 @@ app.post('/save-created-route/:type', auth.verifyToken, (req, res) => {
     res.status(401).send('Unauthorised');
   }
 
+  console.log('>>save-created-route', req.body);
   if ( req.params.type === 'track' ) {
-    var path = new Track(req.body.name, req.body.description, req.body.geometry.coordinates);
+    var path = new Track(req.body.name, req.body.description, req.body.geometry.coordinates, req.body.params.elev);
   } else {
-    var path = new Route(req.body.name, req.body.description, req.body.geometry.coordinates);
+    var path = new Route(req.body.name, req.body.description, req.body.geometry.coordinates, req.body.params.elev);
   }
 
   mongoModel(req.params.type).create(path.mongoFormat(req.userId, true)).then( (document) => {
@@ -651,7 +794,7 @@ app.get('/export-path/:type/:id/', auth.verifyToken, (req, res) => {
 })
 
 app.get('/download', (req, res) => {
-  res.download('./exported_path.gpx', (err) => {
+  res.download('../exported_path.gpx', (err) => {
     if (err) {
       console.log('error: ' + err);
     } else {

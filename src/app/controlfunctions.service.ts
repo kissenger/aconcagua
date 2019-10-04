@@ -2,6 +2,7 @@ import { Router } from '@angular/router';
 import { Injectable } from '@angular/core';
 import { DataService } from './data.service';
 import { HttpService } from './http.service';
+import { GeoService } from './geo.service';
 
 /**
  * provides an interface between components and the intialisationData store, ensuring
@@ -14,7 +15,8 @@ export class ControlFunctions {
   constructor(
     private router: Router,
     private dataService: DataService,
-    private httpService: HttpService
+    private httpService: HttpService,
+    private geoService: GeoService
     ) {
   }
 
@@ -61,7 +63,7 @@ export class ControlFunctions {
     this.router.navigate(['paths', pathType]);
   }
 
-  saveCreatedPath(pathType, polyline) {
+  saveCreatedPath(pathType, polyline, eArray) {
 
     // test that path exists
     if ( polyline.getLength() === 0 ) {
@@ -69,13 +71,14 @@ export class ControlFunctions {
       return 0;
     }
 
-    // convert to array, get path name and description and package up
-    const c = polyline.getArray().map( (e) => (e.toString().replace(/[()]/g, '').split(', ')));
-    const d = this.dataService.getCreateRouteDetails();
-    d.geometry = {coordinates: c.map( (e) => [ parseFloat(e[1]), parseFloat(e[0]) ])};
+    // // convert to array, get path name and description and package up
+    // const c = polyline.getArray().map( (e) => (e.toString().replace(/[()]/g, '').split(', ')));
+    // const d = this.dataService.getCreateRouteDetails();
+    // d.geometry = {coordinates: c.map( (e) => [ parseFloat(e[1]), parseFloat(e[0]) ])};
+    // d.params = {'elev': eArray.flat()};
 
     // send to the backend
-    this.httpService.saveCreatedRoute(pathType, d).subscribe( (r) => {
+    this.httpService.saveCreatedRoute(pathType, this.geoService.polylineToJson(polyline,  eArray)).subscribe( (r) => {
       this.router.navigate(['paths', 'route', r.pathId]);
     });
 

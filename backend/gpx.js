@@ -164,42 +164,45 @@ function writeGpx(path){
 
     file.on('finish', () => { resolve(true) });
     file.on('error', reject);
+    file.on('open', () => {
 
-    file.write(s.repeat(0) + "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + eol);
-    file.write(s.repeat(0) + "<gpx version=\"1.1\" creator=\"" + creator + "\" xmlns=\"" + xmlns + "\">" + eol);
-    file.write(s.repeat(1) + "<rte>" + eol);
-    file.write(s.repeat(2) + "<name>" + path.name + "</name>" + eol);
+      // file.on('finish', () => { resolve(true) });
+      // file.on('error', reject);
 
-    do {
+      file.write(s.repeat(0) + "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + eol);
+      file.write(s.repeat(0) + "<gpx version=\"1.1\" creator=\"" + creator + "\" xmlns=\"" + xmlns + "\">" + eol);
+      file.write(s.repeat(1) + "<rte>" + eol);
+      file.write(s.repeat(2) + "<name>" + path.name + "</name>" + eol);
 
-      point = path.point(i);
+      do {
+        //console.log(path);
+        point = path.getPoint(i);
 
-      if ( point.elev || point.time ) {
-        // elevation or time data exists, use conventional tag
+        if ( point.elev || point.time ) {
+          // elevation or time data exists, use conventional tag
 
-        file.write(s.repeat(2) + "<rtept lat=\"" + point.lat + "\" lon=\"" + point.lng + "\">" + eol);
-        if ( point.elev ) {
-          file.write(s.repeat(3) + "<ele>" + point.elev + "</ele>" + eol);
+          file.write(s.repeat(2) + "<rtept lat=\"" + point.lat + "\" lon=\"" + point.lng + "\">" + eol);
+          if ( point.elev ) {
+            file.write(s.repeat(3) + "<ele>" + point.elev + "</ele>" + eol);
+          }
+          file.write(s.repeat(2) + "</rtept>" + eol);
+
+        } else {
+          // only lat/lon exists, use self-closing tag
+
+          file.write(s.repeat(2) + "<rtept lat=\"" + point.lat + "\" lon=\"" + point.lng + "\" />" + eol);
+
         }
-        file.write(s.repeat(2) + "</rtept>" + eol);
 
-      } else {
-        // only lat/lon exists, use self-closing tag
+        i++;
+      } while (i <= path.pathSize)
 
-        file.write(s.repeat(2) + "<rtept lat=\"" + point.lat + "\" lon=\"" + point.lng + "\" />" + eol);
+      file.write(s.repeat(1) + "</rte>" + eol);
+      file.write(s.repeat(0) + "</gpx>");
 
-      }
-
-      i++;
-    } while (i <= path.pathSize)
-
-    file.write(s.repeat(1) + "</rte>" + eol);
-    file.write(s.repeat(0) + "</gpx>");
-
-    file.end;
-
-    resolve('thios');
-
+      file.finish;
+      resolve();
+    });
 
   })
 

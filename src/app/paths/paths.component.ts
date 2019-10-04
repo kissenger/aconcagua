@@ -23,6 +23,7 @@ export class PathsComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
 
+    console.log('ngOnInit*********************************************');
     // this.paramSubs = this.activatedRouter.params.subscribe(params => {
     //   this.showDiv = params.id === '-1' ? false : true;
     // });

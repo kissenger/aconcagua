@@ -1,8 +1,12 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { NgModule } from '@angular/core';
 import { DataService } from '../../../data.service';
+import { GeoService } from '../../../geo.service';
 import { FormsModule } from '@angular/forms';
 import { UtilsService } from '../../../utils.service';
+import { HttpService } from 'src/app/http.service';
+import { Router } from '@angular/router';
+// import { GoogleChartsModule } from 'angular-google-charts';
 
 @NgModule({
   imports: [
@@ -20,57 +24,73 @@ export class DetailComponent implements OnInit, OnDestroy {
 
   public myService;
 
-  public pathStats;
+  public pathProps;
   public matchStats;
-  public showTime = false;
-  public showElev = false;
-  public showMatchStats = false;
+  public showTime: Boolean;
+  public showElev: Boolean;
+  public showMatchStats: Boolean;
+  public showHillsTable: Boolean;
   public isData = false;
+  private DEBUG = true;
+  // private DEBUG = false;
 
   constructor(
     private dataService: DataService,
-    private utils: UtilsService
+    private geoService: GeoService,
+    private utils: UtilsService,
+    private httpService: HttpService,
+    private router: Router,
     ) {}
 
   ngOnInit() {
 
-    // get data from map
+    if (this.DEBUG) { console.log('-->detail.component.ngOnInit()'); }
 
+    // get data from map
     this.myService = this.dataService.fromMapToData.subscribe( (dataFromMap) => {
 
       this.isData = true;
+      if (this.DEBUG) { console.log('-->detail.component.ngOnInit(): dataFromMap = ', dataFromMap); }
 
-      this.pathStats = dataFromMap.path;
-      if ( this.pathStats.startTime ) { this.showTime = this.pathStats.startTime.length > 1 ? true : false; }
-      this.showElev = this.pathStats.ascent ? true : false;
+      // get path info
+      this.pathProps = dataFromMap.path.properties;
+      this.showElev = this.pathProps.ascent ? true : false;
+      this.showHillsTable = this.pathProps.hills.length === 0 ? false : true;
+      if ( this.pathProps.startTime ) { this.showTime = this.pathProps.startTime.length > 1 ? true : false; }
 
+      // get match info
       this.matchStats = dataFromMap.match;
       this.showMatchStats = this.matchStats ? true : false;
 
     });
 
-
-    // const dataFromMap = this.dataService.getStoredData();
-    // console.log(dataFromMap);
-
-    // path data
-    // this.pathStats = dataFromMap.path.stats;
-    // console.log(this.pathStats);
-    // if ( this.pathStats.startTime ) { this.showTime = this.pathStats.startTime.length > 1 ? true : false; }
-    // this.showElev = this.pathStats.ascent !== 0 ? true : false;
-
-    // // match data
-    // this.matchStats = dataFromMap.match;
-    // console.log(this.matchStats);
-    // console.log(!!this.matchStats);
-
-    // this.showMatchStats = this.matchStats ? true : false;
-
   }
+
+  onGetElevClick() {
+    if (this.DEBUG) { console.log('-->detail.component.onGetElevClick()'); }
+    document.getElementById('get_elev_div').innerHTML = 'fetching elevations... (could take a while) ';
+    this.geoService.addElevationToPath();
+  }
+
+  onReverseRouteClick() {
+    if (this.DEBUG) { console.log('-->detail.component.onReverseRouteClick()'); }
+    document.getElementById('reverse_route_div').innerHTML = 'working...';
+    this.geoService.reversePath().then( () => {
+      document.getElementById('reverse_route_div').innerHTML = 'Reverse route...';
+      this.router.navigate(['paths', this.pathProps.pathType, this.pathProps.pathId, 'reload']);
+    });
+  }
+
+  plotElevation() {
+   // google.load('visualization', '1', {packages: ['columnchart']});
+  }
+
 
   ngOnDestroy() {
-    // this.myService.unsubscribe();
+    if (this.DEBUG) { console.log('-->detail.component.ngOnDestroy()'); }
   }
+
+
 
 }
 

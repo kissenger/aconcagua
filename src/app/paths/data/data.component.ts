@@ -34,10 +34,9 @@ export class DataComponent implements OnInit, OnDestroy {
     private dataService: DataService
     ) {}
 
-  ngOnInit(
+  ngOnInit() {
 
-  ) {
-
+    console.log('ngOnInit%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');
     this.myService = this.dataService.newNotification.subscribe( (data) => {
       this.notificationsWaiting = true;
     });
@@ -82,8 +81,8 @@ export class DataComponent implements OnInit, OnDestroy {
     } else
 
     if ( this.nTabs === 2 ) {
-      const leftDiv = document.getElementById('left');
-      const rightDiv = document.getElementById('right');
+      const leftDiv = document.getElementById('tab left');
+      const rightDiv = document.getElementById('tab right');
       if ( item === 'left' ) {
         leftDiv.style.backgroundColor = this.tabHighlightColour;
         rightDiv.style.backgroundColor = '#FFFFFF';
@@ -94,9 +93,9 @@ export class DataComponent implements OnInit, OnDestroy {
     }
 
     if ( this.nTabs === 3 ) {
-      const leftDiv = document.getElementById('left');
-      const midDiv = document.getElementById('mid');
-      const rightDiv = document.getElementById('right');
+      const leftDiv = document.getElementById('tab left');
+      const midDiv = document.getElementById('tab mid');
+      const rightDiv = document.getElementById('tab right');
       if ( item === 'left' ) {
         leftDiv.style.backgroundColor = this.tabHighlightColour;
         midDiv.style.backgroundColor = '#FFFFFF';

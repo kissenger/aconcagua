@@ -4,4 +4,6 @@
     Distance: {{ distance / 1000 | number: '1.1-1' }}km<br>
     Ascent: {{ ascent | number: '1.1-1' }}m<br>
     Descent: {{ descent | number: '1.1-1' }}m<br>
+    Lumpiness: {{ ascent/distance*1000 | number: '1.1-2' }}m/km<br>
+    Number of points: {{ nPoints | number: '1.0-0'}}
   </div>

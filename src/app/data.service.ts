@@ -13,6 +13,7 @@ export class DataService {
   private storedData;
   private storedCreateRouteData;
   private storedPath;
+  private DEBUG = true;
 
   // data emitters
   fromLoadToMap = new EventEmitter();

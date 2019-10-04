@@ -77,12 +77,14 @@ export class Controls {
     } else if ( pageType === 'create' ) {
       if ( pathType === 'route') {
         cbArray.push(
-          checkBoxes.cbSnap
+          checkBoxes.cbSnap,
+          checkBoxes.cbSimplify
         );
       }
       if ( pathType === 'challenge') {
         cbArray.push(
-          checkBoxes.cbSnap
+          checkBoxes.cbSnap,
+          checkBoxes.cbSimplify
         );
       }
 

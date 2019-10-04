@@ -1,6 +1,4 @@
 
-// const getRandomColour = require('./utils.js').getRandomColour;
-// const Path = require('./_Path.js').Path;
 const outerBoundingBox = require('./geoLib.js').outerBoundingBox;
 const getRandomColour = require('./utils.js').getRandomColour;
 const getContourPalette = require('./utils.js').getContourPalette;
@@ -9,7 +7,7 @@ const getContourPalette = require('./utils.js').getContourPalette;
 class GeoJson{
 
   /**
-   * Returns a GeoJson feature collection object
+   * Returns a GeoJson feature collection object froma  Mongo document input
    * @param {Mongo Document} pathDocuments REQUIRED can be array of docs or single doc returned from mongo
    * @param {string} plotType REQUIRED 'tracks', binary', 'contour' or 'route'
    * @param {Mongo Document} matchDocument OPTIONAL for 'route' or tracks', REQUIRED for 'binary' and 'contour'. NOT an array
@@ -42,15 +40,20 @@ class GeoJson{
       this.getColouredFeatures();
     }
 
-    return {
+    //console.log(this.stats);
+    //console.log();
+
+    return  {
       type: 'FeatureCollection',
       bbox: this.bbox,
       features: this.features,
       properties: {
         pathId: pathDocuments[0]._id,
+        ...this.pathProps[0],
         ...this.stats
       }
     }
+
   }
 
   /**
@@ -210,7 +213,10 @@ class GeoJson{
       category: doc.category,
       startTime: doc.startTime,
       creationDate: doc.creationDate,
-      description: doc.description
+      description: doc.description,
+      direction: doc.direction,
+       name: doc.name
+      // name: doc.name.length === 0 ? doc.category + ' ' + doc.pathType : doc.name,
     }
   }
 

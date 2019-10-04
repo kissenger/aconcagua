@@ -21,13 +21,16 @@ import { ConvertPropertyBindingResult } from '@angular/compiler/src/compiler_uti
 export class SummaryComponent implements OnInit, OnDestroy {
 
   public myService;
+  public paramsSubs;
   public pathName = '';
   public pathDescription = '';
   public pathDistance = 0;
-  public paramsSubs;
-  public isCreatePage;
-  private newName;
-  private newDesc;
+  public isCreatePage: Boolean;
+  private newName = '';
+  private newDesc = '';
+  private DEBUG = true;
+  // private DEBUG = false;
+
 
   constructor(
     private dataService: DataService,
@@ -36,27 +39,29 @@ export class SummaryComponent implements OnInit, OnDestroy {
     ) {}
 
   ngOnInit() {
-
-    // intended to reset form content when uploading multiple single files, but not working
-    this.newName = '';
-    this.newDesc = '';
+    if (this.DEBUG) { console.log('-->summary.component.ngOnInit()'); }
 
     this.paramsSubs = this.activatedRouter.params.subscribe(params => {
 
       if ( params.pageType === 'create' || params.id === '-1') {
         // this is a route create page:
+
         this.isCreatePage = true;
         this.onChange(); // intialises data on storage
 
       } else {
         // not create page: listen to data coming from map component
-
         this.isCreatePage = false;
         this.myService = this.dataService.fromMapToData.subscribe( (dataFromMap) => {
-          console.log(dataFromMap);
-          this.pathName = dataFromMap.path.name;
-          this.pathDescription = typeof dataFromMap.path.description === 'undefined' ? '(No description)' : dataFromMap.path.description;
-          this.pathDistance = dataFromMap.stats.distance;
+
+          if (this.DEBUG) { console.log('-->summary.component.ngOnInit(): dataFromMap = ', dataFromMap); }
+
+          const mapProps = dataFromMap.path.properties;
+          console.log(this.pathName);
+          this.pathName = mapProps.name === '' ? mapProps.category + ' ' + mapProps.direction + ' ' + mapProps.pathType : mapProps.name;
+          this.pathDescription = mapProps.description === '' ? '(No description)' : mapProps.description;
+          this.myService.unsubscribe();
+
         });
 
       }
@@ -64,6 +69,7 @@ export class SummaryComponent implements OnInit, OnDestroy {
   }  // oninit
 
   onChange() {
+    if (this.DEBUG) { console.log('-->summary.component.onChange()'); }
 
     this.dataService.storeCreatedRouteDetails({
       name: this.newName,
@@ -73,7 +79,7 @@ export class SummaryComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    console.log('unsubscribe from mapService');
+    if (this.DEBUG) { console.log('-->summary.component.ngOnDestroy()'); }
     if (this.myService) {
       this.myService.unsubscribe();
     }

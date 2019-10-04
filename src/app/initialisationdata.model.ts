@@ -94,7 +94,8 @@ export class InitialisationData {
   private checkBoxes = {
     cbTracks: { text: 'Tracks', id: 'cbTracks', clickFunction: 'showTracks', isEnabled: false, isChecked: false },
     cbMileMarkers: { text: 'Mile Markers', id: 'cbMileMarkers', clickFunction: 'showMileMarkers', isEnabled: true, isChecked: false },
-    cbSnap: { text: 'Road Snap', id: 'cbSnap', clickFunction: 'snapToRoads', isEnabled: true, isChecked: true}
+    cbSnap: { text: 'Road Snap', id: 'cbSnap', clickFunction: 'snapToRoads', isEnabled: true, isChecked: true},
+    cbSimplify: { text: 'Auto Simplify', id: 'cbSimplify', clickFunction: 'autoSimplify', isEnabled: true, isChecked: true}
   };
 
   // object of arrays of radio buttons groups. each sub arra is treated as a group

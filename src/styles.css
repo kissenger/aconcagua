@@ -2,6 +2,11 @@ body, html {
     height: 100%;
 }
 
+:root {
+  --ts-brown: #523209;
+  --ts-green: #83964B;
+}
+
 /* .background {
     background-image: url("./assets/images/test2.jpg");
     height: 100%;

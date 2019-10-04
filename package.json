@@ -24,6 +24,7 @@
     "@angular/router": "^6.1.0",
     "@types/googlemaps": "^3.30.13",
     "@types/mime-types": "^2.1.0",
+    "angular-google-charts": "^0.1.6",
     "bcrypt": "^3.0.2",
     "body-parser": "^1.18.3",
     "body-parser-xml": "^1.1.0",

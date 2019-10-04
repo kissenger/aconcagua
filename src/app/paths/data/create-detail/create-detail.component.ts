@@ -19,9 +19,10 @@ import { UtilsService } from '../../../utils.service';
 export class CreateDetailComponent implements OnInit, OnDestroy {
 
   public myService;
-  public distance = 0;
-  public ascent = 0;
-  public descent = 0;
+  public distance: Number = 0;
+  public ascent: Number = 0;
+  public descent: Number = 0;
+  public nPoints: Number = 0;
 
   constructor(
     private dataService: DataService,
@@ -35,6 +36,7 @@ export class CreateDetailComponent implements OnInit, OnDestroy {
       this.distance = dataIn.distance;
       this.ascent = dataIn.ascent;
       this.descent = dataIn.descent;
+      this.nPoints = dataIn.nPoints;
       // console.log(this.distance);
 
     });

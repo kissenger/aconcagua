@@ -3,12 +3,16 @@
 <div class='container'>
   <div *ngFor="let line of htmlData">
     <div id={{line.pathId}} (click)="onLineClick(line.pathId)" class="item">
-      <div class="name">
-          {{line.name}}
-          <!-- {{line.pathId}} -->
+      <div *ngIf="line.name === ''" class="name">
+        {{line.category}} {{line.direction}} {{line.pathType}}
+      </div>
+      <div *ngIf="line.name !== ''" class="name">
+        {{line.name}}
       </div>
 
+
       <div *ngIf="pathType === 'route'" class="details">
+        {{line.pathId}} -
         {{line.stats.distance/1000 | number: '1.2-2'}} km -
         {{line.stats.ascent / line.stats.distance * 1000 | number: '1.1-1'}} m/km
       </div>

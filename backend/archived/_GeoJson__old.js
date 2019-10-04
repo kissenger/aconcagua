@@ -1,7 +1,7 @@
 
 // const getRandomColour = require('./utils.js').getRandomColour;
 // const Path = require('./_Path.js').Path;
-const outerBoundingBox = require('./geoLib.js').outerBoundingBox;
+const outerBoundingBox = require('../geoLib.js').outerBoundingBox;
 
 /**
  * GeoJson class

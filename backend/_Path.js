@@ -3,6 +3,7 @@ const p2l = require('./geoLib.js').p2l;
 const Point = require('./geoLib.js').Point;
 const boundingBox = require('./geoLib').boundingBox;
 const pathDistance = require('./geoLib').pathDistance;
+const bearing = require('./geoLib.js').bearing;
 
 /**
  * Path Class
@@ -14,7 +15,8 @@ class Path  {
   constructor(lngLat, elev, pathType) {
 
     this.lngLat = lngLat.map( (x) => [parseFloat(x[0].toFixed(6)), parseFloat(x[1].toFixed(6))]);
-    
+    if (elev) this.elev = elev;
+
     if (pathType === 'route') {
       this.simplify();
     }
@@ -24,26 +26,9 @@ class Path  {
     this.distance = pathDistance(this.lngLat);
     this.pathSize = this.lngLat.length - 1;
     this.category = this.category();
-    if (elev) this.elev = elev;
-
+    this.direction = this.direction();
 
   }
-
-
-  // /**
-  //  * Calculates distance in metres covered by path
-  //  * @param {*} lngLat array containing [lng, lat] coordinates
-  //  */
-  // distance(lngLat) {
-  //   let distance = 0;
-  //   let lastPoint, thisPoint;
-  //   for (let i = 0; i < lngLat.length; i++) {
-  //     thisPoint = this.getPoint(i);
-  //     if (i > 0) distance += p2p(thisPoint, lastPoint);
-  //     lastPoint = thisPoint;
-  //   }
-  //   return distance;
-  // }
 
 
   /**
@@ -80,6 +65,7 @@ class Path  {
       pathType: this.pathType,
       startTime: this.startTime,
       category: this.category,
+      direction: this.direction,
       name: name,
       description: this.description,
       geometry: {
@@ -119,6 +105,7 @@ class Path  {
     const PC_THRESH_LOW = 10;    // if % shared points < PC_THRESH_LOW the consider as 'one way' or 'circular' depending on whether start is returned toKs
 
     // loop through points and match each point against remaining points in path; count matches
+    // also calculate average lat/long for later use
     let nm = 0;
     for ( let i = 0; i < this.pathSize - BUFFER; i++ ) {
       for ( let j = i + BUFFER; j < this.pathSize; j++ ) {
@@ -129,6 +116,7 @@ class Path  {
       }
     }
 
+    this.bbox
     // caculate proportion of points that are matched ( x2 becasue only a max 1/2 of points can be matched)
     const pcShared = nm / this.pathSize * 100 * 2;
     if ( p2p(this.getPoint(0), this.getPoint(this.pathSize)) < MATCH_DISTANCE * 10 ) {
@@ -147,6 +135,84 @@ class Path  {
 
     }
   }
+
+
+  /**
+   * Determines the direction of the path
+   * Currently only determines 'clockwise' or 'anticlockwise' for circular route
+   */
+  direction() {
+
+    const RANGE_TOL = 0.5 * Math.PI;   // in m, if points are this close then consider as coincident
+
+    if ( this.category === 'Circular' || this.category === 'One way') {
+
+      const startPoint = this.getPoint(0);
+      const stepSize = parseInt(this.pathSize/20);
+      let brgShift = 0;
+      let minBrg = 20;
+      let maxBrg = -20;
+      let cwSum = 0;
+      let lastBrg;
+
+      for ( let i = 1; i < this.pathSize; i+= stepSize ) {
+        let thisBrg = bearing(startPoint, this.getPoint(i));
+
+        if (i !== 1) {
+          let deltaBrg = thisBrg - lastBrg;
+
+          // if the change in bearing is greater than 90degs then suspect have moved across 0degs - correct bearing
+          if (deltaBrg > 0.5*Math.PI) { brgShift-- };
+          if (deltaBrg < -0.5*Math.PI) { brgShift++ };
+          thisBrg += brgShift * 2 * Math.PI;
+          deltaBrg = thisBrg - lastBrg;
+
+          // update max and min bearing
+          maxBrg = thisBrg > maxBrg ? thisBrg : maxBrg;
+          minBrg = thisBrg < minBrg ? thisBrg : minBrg;
+
+          // increment/decrement counters depending on change in bearing
+          if (deltaBrg < 0) {
+            cwSum++;
+          } else {
+            cwSum--;
+          }
+          console.log(cwSum, thisBrg, minBrg, maxBrg, deltaBrg, maxBrg - minBrg);
+        }
+
+        lastBrg = thisBrg;
+
+      }
+
+      // return
+      if (maxBrg - minBrg < RANGE_TOL) return ''
+      else {
+        if ( cwSum > 0 ) return 'Anti-clockwise'
+        else return 'Clockwise'
+        }
+      }
+
+    }
+
+
+      // // path is circular, now determine direction
+      // let lastBrg = 0;
+      // let delta = 0;
+      // let deltaSum = 0;
+      // let midPoint = new Point([(this.bbox[2]-this.bbox[0])/2, (this.bbox[3]-this.bbox[1])/2]);
+      // for ( let i = 0; i < this.pathSize; i+=10 ) {
+      //   const brg = bearing(midPoint, this.getPoint(i));
+      //   if (i !== 0 && delta < 3.14) {
+      //     delta = brg - lastBrg;
+      //     deltaSum += delta;
+      //   }
+      //   lastBrg = brg;
+      // }
+      // if (deltaSum > 0) {
+      //   return 'Anticlockwise'
+      // } else {
+      //   return 'Clockwise'
+      // }
 
   /**
    * Create path statistics and parameters
@@ -170,7 +236,6 @@ class Path  {
     let distance = 0;
     let ascent = 0;
     let descent = 0;
-
     let movingTime = 0;
     let movingDist = 0;
     let duration = 0;
@@ -180,7 +245,7 @@ class Path  {
     let lastFiltElev;
     let lastPoint;
     let lastSlopeType;
-    let thisSlopeType;    // 0 = flat, 1 = ascending, -1 = descending
+    let thisSlopeType;              // 0 = flat, 1 = ascending, -1 = descending
     let lastKmStartTime = 0;        // time at which previous km marker was reached
     let lastMileStartTime = 0;      // time at which previous mile marker was reached
     let lastKmStartDist = 0;
@@ -297,9 +362,8 @@ class Path  {
 
             // reset distance each time elevation changes
             eDist = 0;
-
+            //console.log(thisPoint.elev, dElev, gradient, thisSlopeType);
           }
-
 
           if ( typeof lastSlopeType === 'undefined' ) {
             // slopeType has not been initialised: do so
@@ -376,22 +440,6 @@ class Path  {
     }
   }
 
-//  /**
-//   * Returns bounding box for current path or path segment
-//   * @param {*} lngLatArray
-//   */
-//   getBoundingBox(lngLatArray) {
-//     const bbox = [ 180, 90, -180, -90 ];
-//     lngLatArray.forEach( (p) => {
-//       bbox[0] = p[0] < bbox[0] ? p[0] : bbox[0];
-//       bbox[1] = p[1] < bbox[1] ? p[1] : bbox[1];
-//       bbox[2] = p[0] > bbox[2] ? p[0] : bbox[2];
-//       bbox[3] = p[1] > bbox[3] ? p[1] : bbox[3];
-//     });
-//     return bbox;
-//   }
-
-
  /**
   * function simplifyPath
   * simplify path using perpendicular distance method
@@ -400,7 +448,7 @@ class Path  {
   simplify() {
 
     const TOLERANCE = 10;     // tolerance value in metres; the higher the value to greater the simplification
-    const origLength = this.lngLat.length - 1.
+    const origLength = this.lngLat.length - 1;
     let i;
     let flag = true;
 
@@ -481,12 +529,12 @@ class Track extends Path {
  */
 class Route extends Path {
   constructor(name, description, lngLat, elev){
-    
+
     super(lngLat, elev, 'route');
     this.name = name;
     this.description = description;
-    
-    
+
+
 
   }
 }
