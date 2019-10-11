@@ -4,8 +4,12 @@ import { HttpClient } from '@angular/common/http';
 @Injectable()
 export class AuthService {
 
-  private registerUrl = 'http://localhost:3000/register/';
-  private loginUrl = 'http://localhost:3000/login/';
+  // If using Gordons laptop, this will work, otherwise uncomment the line below
+  private hostName = '192.168.0.12';
+  // private hostname = 'localhost';
+
+  private registerUrl = 'http://' + this.hostName + ':3000/register/';
+  private loginUrl = 'http://' + this.hostName + ':3000/login/';
 
   constructor( private http: HttpClient ) {}
 
